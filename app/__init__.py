@@ -62,11 +62,24 @@ def create_app():
             todas_categorias = list(dict.fromkeys(app.config["CATEGORIAS"] + cats_db))
         except Exception:
             db.session.rollback()
+        from datetime import date
         return {
             "categorias": todas_categorias,
             "tipos_documento": app.config["TIPOS_DOCUMENTO"],
             "status_financeiro": app.config["STATUS_FINANCEIRO"],
+            "painel_url": app.config.get("PAINEL_URL", ""),
+            "ano_atual": date.today().year,
         }
+
+    @app.template_filter("brl")
+    def formatar_brl(valor):
+        """Valor em reais no formato brasileiro: R$ 48.320,90 (negativo: -R$ 1.234,00)."""
+        try:
+            numero = float(valor or 0)
+        except (TypeError, ValueError):
+            return valor
+        texto = f"{abs(numero):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        return ("-R$ " if numero < 0 else "R$ ") + texto
 
     return app
 

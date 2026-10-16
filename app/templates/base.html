@@ -2,468 +2,102 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <title>{% block title %}Documentos{% endblock %} — ApexTech Metais</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Financeiro{% endblock %} — Apextech Metais</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/icon.png') }}">
-    <meta name="description" content="Sistema de gestão de documentos fiscais — ApexTech Metais">
+    <meta name="description" content="Financeiro e notas fiscais — Apextech Metais">
 
-    <!-- Fonts (mesmas do ApexAmostra) -->
+    <!-- Mesma fonte do painel administrativo -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700;800;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
 
-    <!-- Bootstrap 5 + Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
-    <style>
-        /* ============================================================
-           APEX TECH METAIS — Identidade Visual
-           Cores originais:
-           --cor-verde:  #2AD07A
-           --cor-escuro: #0E291B
-           --cor-preto:  #05100A
-           ============================================================ */
-        :root {
-            --apex-verde:      #2AD07A;
-            --apex-verde-dim:  #1fa85e;
-            --apex-escuro:     #0E291B;
-            --apex-preto:      #05100A;
-            --apex-cinza:      #1a2e22;
-            --apex-cinza-2:    #223547;
-            --apex-texto:      #e8f5ee;
-            --apex-muted:      #7aaf8e;
-        }
-
-        /* --- BASE --- */
-        body {
-            font-family: 'Lato', 'Raleway', sans-serif;
-            background-color: var(--apex-preto);
-            color: var(--apex-texto);
-            min-height: 100vh;
-        }
-
-        /* --- NAVBAR --- */
-        .apex-navbar {
-            background: linear-gradient(90deg, var(--apex-escuro) 0%, #0b2014 100%);
-            border-bottom: 2px solid rgba(42, 208, 122, 0.25);
-            box-shadow: 0 2px 16px rgba(42,208,122,0.08);
-            padding: 0.5rem 1.5rem;
-        }
-
-        .apex-navbar .navbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-        }
-
-        .apex-navbar .brand-logo {
-            height: 36px;
-            filter: brightness(0) invert(1);
-            transition: opacity 0.2s;
-        }
-
-        .apex-navbar .brand-logo:hover { opacity: 0.85; }
-
-        .apex-navbar .brand-title {
-            font-family: 'Raleway', sans-serif;
-            font-weight: 800;
-            font-size: 0.95rem;
-            color: var(--apex-verde);
-            letter-spacing: 0.03em;
-            line-height: 1.1;
-        }
-
-        .apex-navbar .brand-sub {
-            font-size: 0.7rem;
-            color: var(--apex-muted);
-            font-weight: 400;
-            letter-spacing: 0.05em;
-            display: block;
-        }
-
-        .apex-navbar .nav-link {
-            color: var(--apex-muted) !important;
-            font-weight: 600;
-            font-size: 0.88rem;
-            letter-spacing: 0.02em;
-            padding: 0.45rem 0.85rem !important;
-            border-radius: 6px;
-            transition: all 0.2s;
-        }
-
-        .apex-navbar .nav-link:hover,
-        .apex-navbar .nav-link.active {
-            color: var(--apex-verde) !important;
-            background: rgba(42,208,122,0.1);
-        }
-
-        .apex-navbar .nav-link i { margin-right: 5px; font-size: 0.82rem; }
-
-        .apex-navbar .navbar-toggler {
-            border-color: rgba(42,208,122,0.4);
-            color: var(--apex-verde);
-        }
-
-        .apex-navbar .user-badge {
-            background: rgba(42,208,122,0.12);
-            border: 1px solid rgba(42,208,122,0.3);
-            color: var(--apex-verde);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 700;
-        }
-
-        .apex-navbar .btn-sair {
-            background: transparent;
-            border: 1px solid rgba(42,208,122,0.35);
-            color: var(--apex-muted);
-            padding: 4px 12px;
-            border-radius: 6px;
-            font-size: 0.82rem;
-            transition: all 0.2s;
-            text-decoration: none;
-        }
-
-        .apex-navbar .btn-sair:hover {
-            background: rgba(255,77,77,0.12);
-            border-color: rgba(255,77,77,0.5);
-            color: #ff6b6b;
-        }
-
-        @media (max-width: 576px) {
-            .apex-content {
-                padding: 1rem 0.5rem;
-            }
-            .card-body {
-                padding: 0.75rem;
-            }
-            .navbar-brand {
-                font-size: 1rem;
-            }
-        }
-
-        /* --- MAIN CONTENT --- */
-        .apex-content {
-            padding: 1.75rem 1.5rem;
-        }
-
-
-        /* --- CARDS --- */
-        .card {
-            background: var(--apex-cinza);
-            border: 1px solid rgba(42,208,122,0.15);
-            border-radius: 12px;
-            color: var(--apex-texto);
-        }
-
-        .card-body { color: var(--apex-texto); }
-
-        /* Totais cards */
-        .card.text-bg-success {
-            background: linear-gradient(135deg, #1a5c36 0%, #0f3d24 100%) !important;
-            border-color: rgba(42,208,122,0.4) !important;
-        }
-
-        .card.text-bg-danger {
-            background: linear-gradient(135deg, #5c1a1a 0%, #3d0f0f 100%) !important;
-            border-color: rgba(255,77,77,0.35) !important;
-        }
-
-        .card.text-bg-dark {
-            background: linear-gradient(135deg, #1a1a1a 0%, #111 100%) !important;
-            border-color: rgba(255,255,255,0.12) !important;
-        }
-
-        /* --- FORM CONTROLS --- */
-        .form-control, .form-select {
-            background-color: rgba(255,255,255,0.05);
-            border: 1px solid rgba(42,208,122,0.2);
-            color: var(--apex-texto);
-            border-radius: 8px;
-            color-scheme: dark;
-        }
-
-        /* Ícone de calendário em branco nos navegadores (WebKit e Chrome) */
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            filter: invert(1);
-            cursor: pointer;
-            opacity: 0.9;
-        }
-
-        input[type="date"]::-webkit-calendar-picker-indicator:hover {
-            opacity: 1;
-        }
-
-        .form-control:focus, .form-select:focus {
-            background-color: rgba(42,208,122,0.06);
-            border-color: var(--apex-verde);
-            color: var(--apex-texto);
-            box-shadow: 0 0 0 3px rgba(42,208,122,0.15);
-        }
-
-
-        .form-control::placeholder { color: var(--apex-muted); opacity: 0.7; }
-
-        .form-select option {
-            background: var(--apex-escuro);
-            color: var(--apex-texto);
-        }
-
-        .form-label {
-            color: var(--apex-muted);
-            font-size: 0.82rem;
-            font-weight: 600;
-            letter-spacing: 0.03em;
-            margin-bottom: 4px;
-        }
-
-        /* --- BUTTONS --- */
-        .btn-primary {
-            background: var(--apex-verde);
-            border-color: var(--apex-verde);
-            color: #000;
-            font-weight: 700;
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-
-        .btn-primary:hover, .btn-primary:focus {
-            background: var(--apex-verde-dim);
-            border-color: var(--apex-verde-dim);
-            color: #000;
-            box-shadow: 0 0 12px rgba(42,208,122,0.35);
-        }
-
-        .btn-outline-primary {
-            color: var(--apex-verde);
-            border-color: var(--apex-verde);
-            border-radius: 8px;
-        }
-
-        .btn-outline-primary:hover {
-            background: var(--apex-verde);
-            color: #000;
-        }
-
-        .btn-outline-secondary {
-            color: var(--apex-muted);
-            border-color: rgba(42,208,122,0.25);
-            border-radius: 8px;
-        }
-
-        .btn-outline-secondary:hover {
-            background: rgba(42,208,122,0.1);
-            color: var(--apex-verde);
-            border-color: var(--apex-verde);
-        }
-
-        .btn-outline-danger {
-            border-radius: 8px;
-        }
-
-        /* --- TABLE --- */
-        .table {
-            color: var(--apex-texto);
-            border-color: rgba(42,208,122,0.1);
-        }
-
-        .table thead th {
-            background: rgba(42,208,122,0.08);
-            color: var(--apex-verde);
-            font-size: 0.8rem;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            border-color: rgba(42,208,122,0.15);
-            padding: 10px 12px;
-        }
-
-        .table tbody tr {
-            border-color: rgba(42,208,122,0.07);
-            transition: background 0.15s;
-        }
-
-        .table-striped > tbody > tr:nth-of-type(odd) > * {
-            background: rgba(42,208,122,0.03);
-            color: var(--apex-texto);
-        }
-
-        .table-striped > tbody > tr:nth-of-type(even) > * {
-            background: transparent;
-            color: var(--apex-texto);
-        }
-
-        .table tbody tr:hover td {
-            background: rgba(42,208,122,0.07) !important;
-        }
-
-        .table td {
-            padding: 9px 12px;
-            vertical-align: middle;
-        }
-
-        /* --- ALERTS --- */
-        .alert-success {
-            background: rgba(42,208,122,0.12);
-            border-color: rgba(42,208,122,0.4);
-            color: var(--apex-verde);
-        }
-
-        .alert-danger {
-            background: rgba(255,77,77,0.1);
-            border-color: rgba(255,77,77,0.4);
-            color: #ff8080;
-        }
-
-        .alert-warning {
-            background: rgba(255,193,7,0.1);
-            border-color: rgba(255,193,7,0.4);
-            color: #ffc107;
-        }
-
-        .alert-info {
-            background: rgba(42,208,122,0.08);
-            border-color: rgba(42,208,122,0.25);
-            color: var(--apex-muted);
-        }
-
-        .btn-close { filter: invert(1); }
-
-        /* --- HEADING --- */
-        h4, h5, h6 {
-            font-family: 'Raleway', sans-serif;
-            font-weight: 800;
-            color: var(--apex-verde);
-        }
-
-        /* --- TEXT MUTED --- */
-        .text-muted { color: var(--apex-muted) !important; }
-
-        /* --- MOBILE CARD --- */
-        .card.mb-2 {
-            border-left: 3px solid var(--apex-verde);
-        }
-
-        /* --- FOOTER STRIPE --- */
-        .apex-footer {
-            border-top: 1px solid rgba(42,208,122,0.12);
-            padding: 12px 24px;
-            text-align: center;
-            font-size: 0.75rem;
-            color: var(--apex-muted);
-            margin-top: auto;
-        }
-
-        /* --- CONTAS ATRASADAS STYLING --- */
-        .table-danger-custom {
-            background-color: rgba(255, 77, 77, 0.12) !important;
-        }
-        .table-danger-custom td {
-            background-color: rgba(255, 77, 77, 0.12) !important;
-        }
-
-        /* --- SCROLLBAR --- */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: var(--apex-preto); }
-        ::-webkit-scrollbar-thumb { background: rgba(42,208,122,0.3); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--apex-verde); }
-
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apex-painel.css') }}?v=5">
 </head>
-<body class="d-flex flex-column" style="min-height:100vh;">
+<body>
+
+{% macro avisos() %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        <i class="fa-solid fa-{% if category == 'success' %}circle-check{% elif category == 'danger' %}circle-exclamation{% elif category == 'warning' %}triangle-exclamation{% else %}circle-info{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+{% endmacro %}
 
 {% if current_user.is_authenticated %}
-<nav class="apex-navbar navbar navbar-expand-lg sticky-top">
-  <div class="container-fluid">
-
-    <a class="navbar-brand" href="{{ url_for('notas.dashboard') }}">
-      <img src="{{ url_for('static', filename='img/logo-apextech.svg') }}" alt="ApexTech Metais" class="brand-logo">
-      <div>
-        <span class="brand-title">ApexTech Metais</span>
-        <span class="brand-sub">Gestão de Documentos</span>
-      </div>
-    </a>
-
-
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
-      <i class="fa-solid fa-bars" style="color:var(--apex-verde);"></i>
-    </button>
-
-    <div class="collapse navbar-collapse" id="navMenu">
-      <ul class="navbar-nav me-auto ms-3 gap-1">
-        <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('notas.dashboard') }}">
-            <i class="fa-solid fa-table-list"></i> Documentos
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('notas.upload') }}">
-            <i class="fa-solid fa-file-arrow-up"></i> Enviar
-          </a>
-        </li>
-        {% if current_user.is_admin %}
-        <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('notas.dre') }}">
-            <i class="fa-solid fa-chart-line"></i> DRE Mensal
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('notas.auditoria') }}">
-            <i class="fa-solid fa-shield-halved"></i> Auditoria
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('auth.usuarios') }}">
-            <i class="fa-solid fa-users-cog"></i> Usuários
-          </a>
-        </li>
-        {% endif %}
-
-
-
-      </ul>
-
-      <div class="d-flex align-items-center gap-2">
-        <span class="user-badge">
-          <i class="fa-solid fa-circle-user" style="font-size:0.75rem;"></i>
-          {{ current_user.nome }}
-          {% if current_user.is_admin %}<span style="opacity:.6;font-size:.7rem;margin-left:4px;">admin</span>{% endif %}
-        </span>
-        <a class="btn-sair" href="{{ url_for('auth.logout') }}">
-          <i class="fa-solid fa-right-from-bracket"></i> Sair
-        </a>
-      </div>
+{% set ep = request.endpoint or '' %}
+<div class="ap-app" id="apApp">
+  <aside class="ap-sidebar" id="apSidebar" aria-label="Menu">
+    <div class="ap-sidebar__topo">
+      <a href="{{ url_for('notas.dashboard') }}"><img src="{{ url_for('static', filename='img/logo-apextech.svg') }}" alt="Apextech Metais"></a>
+      <p>Financeiro · Notas Fiscais</p>
     </div>
 
+    <nav class="ap-nav">
+      <a class="ap-nav__item {% if ep == 'notas.dashboard' %}ativo{% endif %}" href="{{ url_for('notas.dashboard') }}">
+        <i class="fa-solid fa-table-list" style="color:#25D07F;"></i><span>Contas e Documentos</span>
+      </a>
+      <a class="ap-nav__item {% if ep == 'notas.upload' %}ativo{% endif %}" href="{{ url_for('notas.upload') }}">
+        <i class="fa-solid fa-file-arrow-up" style="color:#38bdf8;"></i><span>Enviar Documento</span>
+      </a>
+      {% if current_user.is_admin %}
+      <p class="ap-nav__grupo">Gestão</p>
+      <a class="ap-nav__item {% if ep == 'notas.dre' %}ativo{% endif %}" href="{{ url_for('notas.dre') }}">
+        <i class="fa-solid fa-chart-line" style="color:#f0c040;"></i><span>DRE Mensal</span>
+      </a>
+      <a class="ap-nav__item {% if ep == 'notas.auditoria' %}ativo{% endif %}" href="{{ url_for('notas.auditoria') }}">
+        <i class="fa-solid fa-shield-halved" style="color:#a78bfa;"></i><span>Auditoria</span>
+      </a>
+      <a class="ap-nav__item {% if ep == 'auth.usuarios' %}ativo{% endif %}" href="{{ url_for('auth.usuarios') }}">
+        <i class="fa-solid fa-users-gear" style="color:#fb923c;"></i><span>Usuários</span>
+      </a>
+      {% endif %}
+    </nav>
+
+    <div class="ap-sidebar__base">
+      {% if painel_url %}
+      <a class="ap-nav__item" href="{{ painel_url }}">
+        <i class="fa-solid fa-arrow-left" style="color:#94a3b8;"></i><span>Voltar ao painel</span>
+      </a>
+      {% endif %}
+      <div class="ap-usuario">
+        <i class="fa-solid fa-circle-user"></i>
+        <div><strong>{{ current_user.nome }}</strong>{% if current_user.is_admin %}Administrador{% else %}Usuário{% endif %}</div>
+      </div>
+      <a class="ap-nav__item" href="{{ url_for('auth.logout') }}">
+        <i class="fa-solid fa-right-from-bracket" style="color:#ff6b6b;"></i><span>Sair</span>
+      </a>
+    </div>
+  </aside>
+  <div class="ap-fundo-menu" onclick="document.getElementById('apApp').classList.remove('menu-aberto')"></div>
+
+  <div class="ap-main">
+    <div class="ap-topo-celular">
+      <button type="button" class="ap-botao-menu" aria-label="Abrir menu" onclick="document.getElementById('apApp').classList.add('menu-aberto')"><i class="fa-solid fa-bars"></i></button>
+      <img src="{{ url_for('static', filename='img/logo-apextech.svg') }}" alt="Apextech Metais">
+      <span style="width:42px;"></span>
+    </div>
+
+    <main class="ap-conteudo">
+      {{ avisos() }}
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="ap-rodape">Apextech Metais — Financeiro e Notas Fiscais &copy; {{ ano_atual }}</footer>
   </div>
-</nav>
-{% endif %}
-
-<div class="apex-content flex-grow-1 container-fluid px-3 px-md-4">
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-          <i class="fa-solid fa-{% if category == 'success' %}circle-check{% elif category == 'danger' %}circle-exclamation{% elif category == 'warning' %}triangle-exclamation{% else %}circle-info{% endif %} me-2"></i>
-          {{ message }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-
-  {% block content %}{% endblock %}
 </div>
-
-
-<footer class="apex-footer">
-  <i class="fa-solid fa-shield-halved" style="color:var(--apex-verde);margin-right:5px;"></i>
-  ApexTech Metais — Sistema de Gestão de Documentos &copy; {{ 2024 }}
-</footer>
-
+{% else %}
+<main class="ap-conteudo">
+  {{ avisos() }}
+  {% block content_publico %}{% endblock %}
+</main>
+{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

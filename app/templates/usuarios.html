@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Usuários{% endblock %}
 {% block content %}
-<h4 class="mb-3">Usuários</h4>
+<header class="ap-cabecalho">
+  <div>
+    <h1><i class="fa-solid fa-users-gear"></i> Usuários</h1>
+    <p>Quem pode entrar no Financeiro. Administradores veem DRE, auditoria e usuários.</p>
+  </div>
+</header>
 
 <div class="card mb-4">
   <div class="card-body">
@@ -14,7 +19,7 @@
       </div>
       <div class="col-6 col-md-3">
         <label class="form-label small">E-mail (para Alertas)</label>
-        <input type="email" name="email" class="form-control" placeholder="admin@apextech.com">
+        <input type="email" name="email" class="form-control" placeholder="nome@apextechmetais.com.br">
       </div>
       <div class="col-6 col-md-2">
         <label class="form-label small">Usuário (login)</label>

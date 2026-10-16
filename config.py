@@ -26,6 +26,9 @@ class Config:
         "UPLOAD_FOLDER", os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
     )
 
+    # Endereço do painel administrativo (link "Voltar ao painel" no menu)
+    PAINEL_URL = os.environ.get("PAINEL_URL", "https://apextechmetais.com.br/admin.html")
+
     MAX_CONTENT_LENGTH = 15 * 1024 * 1024  # 15 MB por arquivo
     ALLOWED_EXTENSIONS = {"pdf", "jpg", "jpeg", "png", "webp", "heic"}
 

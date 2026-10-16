@@ -1,4 +1,4 @@
-# 🛡️ ApexTech Metais — Servidor de Gestão Financeira & Reciclagem de Eletrônicos
+# 🛡️ Apextech Metais — Servidor de Gestão Financeira & Reciclagem de Eletrônicos
 
 Sistema web corporativo completo para gestão de **Contas a Pagar**, **Contas a Receber**, **DRE Simplificado**, **Automação por IA/OCR**, **Alertas por E-mail**, **Emissão de Recibos em PDF**, **Auditoria** e **Segurança Avançada**. 
 
@@ -25,7 +25,7 @@ Desenvolvido para alta performance e implantado no **Railway** com PostgreSQL + 
 - **Seletor de Ano Fiscal**: Comparativo de desempenho anual acumulado com indicadores visuais de Superávit / Déficit.
 
 ### 📄 5. Emissão de Recibos em PDF & Exportação Excel
-- **Gerador de Recibos em PDF (`/notas/<id>/recibo-pdf`)**: Impressão com 1 clique de recibo timbrado oficial com a marca **ApexTech Metais**, incluindo dados da transação e campo de assinatura.
+- **Gerador de Recibos em PDF (`/notas/<id>/recibo-pdf`)**: Impressão com 1 clique de recibo timbrado oficial com a marca **Apextech Metais**, incluindo dados da transação e campo de assinatura.
 - **Exportação para Excel (`.xlsx`)**: Planilha estilizada nas cores corporativas respeitando todos os filtros aplicados na tela.
 
 ### ✉️ 6. Alertas Automáticos por E-mail (SMTP)
@@ -91,5 +91,5 @@ python wsgi.py
 ---
 
 ## ✒️ Marca & Identidade Visual
-**ApexTech Metais** — *Sistema de Gestão Financeira & Reciclagem de Eletrônicos*
+**Apextech Metais** — *Sistema de Gestão Financeira & Reciclagem de Eletrônicos*
 

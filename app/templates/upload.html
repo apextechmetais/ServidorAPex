@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Enviar nota{% endblock %}
 {% block content %}
-<h4 class="mb-3">Enviar nota fiscal</h4>
+<header class="ap-cabecalho">
+  <div>
+    <h1><i class="fa-solid fa-file-arrow-up"></i> Enviar Documento</h1>
+    <p>Nota fiscal, boleto, contrato ou foto. O sistema tenta ler o valor e o vencimento sozinho.</p>
+  </div>
+</header>
 <div class="card">
   <div class="card-body">
     <form method="post" enctype="multipart/form-data">
@@ -105,7 +110,7 @@
 <!-- Modal Nova Categoria -->
 <div class="modal fade" id="modalNovaCategoriaUpload" tabindex="-1" aria-labelledby="modalNovaCategoriaUploadLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="background: var(--apex-escuro); border: 1px solid rgba(42, 208, 122, 0.4); color: var(--apex-texto);">
+    <div class="modal-content">
       <div class="modal-header border-secondary">
         <h5 class="modal-title" id="modalNovaCategoriaUploadLabel"><i class="fa-solid fa-folder-plus me-2 text-success"></i>Cadastrar Nova Categoria</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>

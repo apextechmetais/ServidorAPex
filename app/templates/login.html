@@ -3,173 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login — ApexTech Metais</title>
+    <title>Entrar — Apextech Metais</title>
 
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/icon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700;800;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apex-painel.css') }}?v=5">
     <style>
-        :root {
-            --apex-verde:  #2AD07A;
-            --apex-verde-dim: #1fa85e;
-            --apex-escuro: #0E291B;
-            --apex-preto:  #05100A;
-            --apex-muted:  #7aaf8e;
-            --apex-texto:  #e8f5ee;
-        }
-
+        /* Mesma tela de entrada do painel administrativo */
         body {
-            font-family: 'Lato', sans-serif;
-            background: radial-gradient(ellipse at 30% 40%, #0a1a0f 0%, #05100A 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
+            min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px;
+            background:
+                radial-gradient(900px 500px at 80% 0, rgba(37, 208, 127, 0.14), transparent 60%),
+                linear-gradient(180deg, var(--ap-base), var(--ap-floresta) 60%, var(--ap-base));
         }
-
-        /* Grid animado de fundo */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background-image:
-                linear-gradient(rgba(42,208,122,0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(42,208,122,0.04) 1px, transparent 1px);
-            background-size: 60px 60px;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .login-wrapper {
-            position: relative;
-            z-index: 1;
-            width: 100%;
-            max-width: 420px;
-            padding: 1.5rem;
-        }
-
+        .login-wrapper { width: 100%; max-width: 400px; }
         .login-box {
-            background: linear-gradient(160deg, #0e291b 0%, #0b2014 100%);
-            border: 1px solid rgba(42,208,122,0.25);
-            border-radius: 20px;
-            padding: 2.5rem;
-            box-shadow:
-                0 20px 60px rgba(0,0,0,0.7),
-                0 0 40px rgba(42,208,122,0.06),
-                inset 0 1px 0 rgba(42,208,122,0.1);
+            background: rgba(5, 19, 12, 0.78); border: 1px solid var(--ap-linha); border-radius: 16px;
+            padding: 40px 36px 32px; box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.9);
         }
-
-        .login-logo {
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .login-logo img {
-            height: 56px;
-            filter: brightness(0) invert(1);
-            transition: filter 0.3s;
-        }
-
-        .login-title {
-            font-family: 'Raleway', sans-serif;
-            font-weight: 800;
-            font-size: 1.4rem;
-            color: var(--apex-verde);
-            text-align: center;
-            margin-bottom: 0.25rem;
-            letter-spacing: 0.02em;
-        }
-
-        .login-sub {
-            text-align: center;
-            font-size: 0.82rem;
-            color: var(--apex-muted);
-            margin-bottom: 2rem;
-        }
-
-        .form-label {
-            color: var(--apex-muted);
-            font-size: 0.82rem;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-        }
-
-        .form-control {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(42,208,122,0.2);
-            color: var(--apex-texto);
-            border-radius: 10px;
-            padding: 0.65rem 0.9rem;
-            font-size: 0.95rem;
-            transition: all 0.2s;
-        }
-
-        .form-control:focus {
-            background: rgba(42,208,122,0.06);
-            border-color: var(--apex-verde);
-            color: var(--apex-texto);
-            box-shadow: 0 0 0 3px rgba(42,208,122,0.18);
-        }
-
-        .form-control::placeholder { color: rgba(122,175,142,0.5); }
-
+        .login-logo { text-align: center; margin-bottom: 18px; }
+        .login-logo img { max-width: 180px; filter: brightness(0) invert(1); }
+        .login-title { text-align: center; font-size: 1.35rem; font-weight: 700; font-stretch: 112%; color: #fff; }
+        .login-sub { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 28px; color: var(--ap-texto-2); font-size: 0.9rem; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ap-verde); box-shadow: 0 0 0 4px rgba(37, 208, 127, 0.18); }
+        .login-box .form-control { padding: 11px 14px; }
+        .login-box .input-group .form-control { border-right: 0 !important; border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+        .login-box .input-group .btn { border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; }
         .btn-apex {
-            background: var(--apex-verde);
-            color: #000;
-            font-family: 'Raleway', sans-serif;
-            font-weight: 800;
-            font-size: 1rem;
-            letter-spacing: 0.05em;
-            border: none;
-            border-radius: 10px;
-            padding: 0.7rem;
-            width: 100%;
-            transition: all 0.25s;
-            margin-top: 0.5rem;
+            width: 100%; padding: 12px; border: 0; border-radius: 8px; background: var(--ap-verde); color: var(--ap-base);
+            font-family: var(--ap-fonte); font-weight: 700; font-size: 1rem; transition: background-color 0.18s var(--ap-suave), scale 0.12s var(--ap-suave);
         }
-
-        .btn-apex:hover {
-            background: var(--apex-verde-dim);
-            box-shadow: 0 0 20px rgba(42,208,122,0.4);
-            transform: translateY(-1px);
-        }
-
-        .btn-apex:active { transform: translateY(0); }
-
-        .alert-danger {
-            background: rgba(255,77,77,0.1);
-            border: 1px solid rgba(255,77,77,0.35);
-            color: #ff8080;
-            border-radius: 10px;
-            font-size: 0.88rem;
-        }
-
-        .login-footer {
-            text-align: center;
-            margin-top: 1.5rem;
-            font-size: 0.75rem;
-            color: rgba(122,175,142,0.5);
-        }
-
-        /* Glowing dot animation */
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 6px rgba(42,208,122,0.6); }
-            50% { box-shadow: 0 0 14px rgba(42,208,122,1); }
-        }
-        .status-dot {
-            display: inline-block;
-            width: 7px; height: 7px;
-            background: var(--apex-verde);
-            border-radius: 50%;
-            margin-right: 5px;
-            animation: pulse-glow 2s ease-in-out infinite;
-        }
+        .btn-apex:hover { background: #4BE39A; }
+        .btn-apex:active { scale: 0.98; }
+        .login-footer { text-align: center; margin-top: 18px; font-size: 0.8rem; color: var(--ap-texto-2); }
     </style>
 </head>
 <body>
@@ -177,13 +47,13 @@
   <div class="login-box">
 
     <div class="login-logo">
-      <img src="{{ url_for('static', filename='img/logo-apextech.svg') }}" alt="ApexTech Metais">
+      <img src="{{ url_for('static', filename='img/logo-apextech.svg') }}" alt="Apextech Metais">
     </div>
 
-    <div class="login-title">ApexTech Metais</div>
+    <div class="login-title">Apextech Metais</div>
     <div class="login-sub">
       <span class="status-dot"></span>
-      Gestão de Documentos
+      Financeiro · Notas Fiscais
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -219,7 +89,7 @@
 
   </div>
   <div class="login-footer">
-    ApexTech Metais &mdash; Acesso Restrito
+    Apextech Metais &mdash; Acesso restrito
   </div>
 </div>
 

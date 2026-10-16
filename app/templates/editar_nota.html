@@ -1,7 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Editar nota{% endblock %}
 {% block content %}
-<h4 class="mb-3">Editar nota</h4>
+<header class="ap-cabecalho">
+  <div>
+    <h1><i class="fa-solid fa-pen-to-square"></i> Editar Documento</h1>
+    <p>Atualize os dados, dê baixa no pagamento ou anexe o comprovante.</p>
+  </div>
+  <div class="ap-cabecalho__acoes">
+    <a href="{{ url_for('notas.dashboard') }}" class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-left me-1"></i> Voltar</a>
+  </div>
+</header>
 <div class="card">
   <div class="card-body">
     <form method="post" enctype="multipart/form-data">
@@ -95,7 +103,7 @@
           <label class="form-label">Valor Amortizado/Pago (R$)</label>
           <input type="text" name="valor_pago" class="form-control" value="{{ nota.valor_pago or '0.00' }}">
           {% if nota.saldo_restante > 0 and nota.valor_pago > 0 %}
-          <div class="form-text text-warning">Saldo Restante: R$ {{ "%.2f"|format(nota.saldo_restante) }}</div>
+          <div class="form-text text-warning">Saldo Restante: {{ nota.saldo_restante|brl }}</div>
           {% endif %}
         </div>
 

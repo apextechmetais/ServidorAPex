@@ -1,9 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Início{% endblock %}
 {% block content %}
-<h4 class="mb-3">Documentos</h4>
+<header class="ap-cabecalho">
+  <div>
+    <h1><i class="fa-solid fa-table-list"></i> Contas e Documentos</h1>
+    <p>Contas a pagar e a receber, notas fiscais, boletos e comprovantes.</p>
+  </div>
+  <div class="ap-cabecalho__acoes">
+    <a href="{{ url_for('notas.upload') }}" class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i> Enviar Documento</a>
+  </div>
+</header>
 
-<div class="card mb-4 border-0 shadow-sm" style="background: rgba(14, 41, 27, 0.6); border: 1px solid rgba(42, 208, 122, 0.2) !important;">
+<div class="card mb-4">
   <div class="card-body p-3">
     <form method="get">
       <div class="row g-2 align-items-end">
@@ -126,8 +134,8 @@
     <div class="card text-bg-success h-100 shadow-sm">
       <div class="card-body py-2">
         <div class="small opacity-75"><i class="fa-solid fa-circle-arrow-down me-1"></i> Recebido (Efetivado)</div>
-        <div class="fs-5 fw-bold">R$ {{ "%.2f"|format(total_entradas) }}</div>
-        <div class="small text-light" style="font-size: 0.75rem;">A Receber: R$ {{ "%.2f"|format(total_a_receber) }}</div>
+        <div class="fs-5 fw-bold">{{ total_entradas|brl }}</div>
+        <div class="small text-light" style="font-size: 0.75rem;">A Receber: {{ total_a_receber|brl }}</div>
       </div>
     </div>
   </div>
@@ -135,17 +143,17 @@
     <div class="card text-bg-danger h-100 shadow-sm">
       <div class="card-body py-2">
         <div class="small opacity-75"><i class="fa-solid fa-circle-arrow-up me-1"></i> Pago (Efetivado)</div>
-        <div class="fs-5 fw-bold">R$ {{ "%.2f"|format(total_saidas) }}</div>
-        <div class="small text-light" style="font-size: 0.75rem;">A Pagar: R$ {{ "%.2f"|format(total_a_pagar) }}</div>
+        <div class="fs-5 fw-bold">{{ total_saidas|brl }}</div>
+        <div class="small text-light" style="font-size: 0.75rem;">A Pagar: {{ total_a_pagar|brl }}</div>
       </div>
     </div>
   </div>
   <div class="col-6 col-md-3">
-    <div class="card h-100 shadow-sm" style="background: linear-gradient(135deg, #701a1a 0%, #4a0d0d 100%); border: 1px solid rgba(255, 77, 77, 0.5);">
+    <div class="card ap-kpi ap-kpi--alerta h-100">
       <div class="card-body py-2">
-        <div class="small text-warning fw-bold"><i class="fa-solid fa-clock text-danger me-1"></i> Contas Atrasadas</div>
-        <div class="fs-5 fw-bold text-white">R$ {{ "%.2f"|format(total_atrasadas_valor) }}</div>
-        <div class="small text-warning" style="font-size: 0.75rem;">{{ qtd_atrasadas }} pendência(s) com atraso</div>
+        <div class="small"><i class="fa-solid fa-clock text-warning me-1"></i> Contas Atrasadas</div>
+        <div class="fs-5 fw-bold text-white">{{ total_atrasadas_valor|brl }}</div>
+        <div class="small">{{ qtd_atrasadas }} pendência(s) com atraso</div>
       </div>
     </div>
   </div>
@@ -153,18 +161,19 @@
     <div class="card text-bg-dark h-100 shadow-sm">
       <div class="card-body py-2">
         <div class="small opacity-75"><i class="fa-solid fa-scale-balanced me-1"></i> Saldo Realizado</div>
-        <div class="fs-5 fw-bold {% if saldo >= 0 %}text-success{% else %}text-danger{% endif %}">R$ {{ "%.2f"|format(saldo) }}</div>
+        <div class="fs-5 fw-bold {% if saldo >= 0 %}text-success{% else %}text-danger{% endif %}">{{ saldo|brl }}</div>
         <div class="small text-muted" style="font-size: 0.75rem;">Recebido menos Pago</div>
       </div>
     </div>
+  </div>
 </div>
 
 {# --- GRÁFICOS FINANCEIROS INTERATIVOS --- #}
 <div class="row mb-4 g-3">
   <div class="col-12 col-md-7">
-    <div class="card border-0 shadow-sm h-100" style="background: rgba(14, 41, 27, 0.5); border: 1px solid rgba(42, 208, 122, 0.2) !important;">
+    <div class="card h-100">
       <div class="card-body p-3">
-        <h6 class="card-title text-success mb-3"><i class="fa-solid fa-chart-pie me-2"></i>Distribuição de Valores por Categoria</h6>
+        <h6 class="card-title mb-3"><i class="fa-solid fa-chart-pie me-2"></i>Distribuição de Valores por Categoria</h6>
         <div style="height: 220px; position: relative;">
           <canvas id="chartCategorias"></canvas>
         </div>
@@ -172,9 +181,9 @@
     </div>
   </div>
   <div class="col-12 col-md-5">
-    <div class="card border-0 shadow-sm h-100" style="background: rgba(14, 41, 27, 0.5); border: 1px solid rgba(42, 208, 122, 0.2) !important;">
+    <div class="card h-100">
       <div class="card-body p-3">
-        <h6 class="card-title text-success mb-3"><i class="fa-solid fa-chart-column me-2"></i>Comparativo Financeiro</h6>
+        <h6 class="card-title mb-3"><i class="fa-solid fa-chart-column me-2"></i>Comparativo Financeiro</h6>
         <div style="height: 220px; position: relative;">
           <canvas id="chartComparativo"></canvas>
         </div>
@@ -183,70 +192,68 @@
   </div>
 </div>
 
-<!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-    // 1. Gráfico por Categoria (Rosca)
-    const ctxCat = document.getElementById('chartCategorias').getContext('2d');
-    new Chart(ctxCat, {
+    // Mesmo acabamento dos gráficos do painel
+    Chart.defaults.font.family = "'Archivo', 'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.color = 'rgba(245, 246, 243, 0.72)';
+    Chart.defaults.borderColor = 'rgba(245, 246, 243, 0.07)';
+    const brl = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const dica = { backgroundColor: '#0C2A1D', borderColor: 'rgba(245, 246, 243, 0.18)', borderWidth: 1, padding: 12, cornerRadius: 8, titleColor: '#F5F6F3', bodyColor: 'rgba(245, 246, 243, 0.85)' };
+
+    // 1. Distribuição por categoria (rosca)
+    new Chart(document.getElementById('chartCategorias'), {
       type: 'doughnut',
       data: {
         labels: {{ chart_labels|tojson }},
         datasets: [{
           data: {{ chart_values|tojson }},
-          backgroundColor: [
-            '#2AD07A', '#36A2EB', '#FF6384', '#FFCE56', '#9966FF',
-            '#4BC0C0', '#FF9F40', '#E7E9ED', '#8e44ad', '#2ecc71'
-          ],
-          borderWidth: 1,
-          borderColor: '#0E291B'
+          backgroundColor: ['#25D07F', '#38bdf8', '#f0c040', '#a78bfa', '#fb923c', '#f472b6', '#7eb3d5', '#e07b39', '#94a3b8', '#d4b896'],
+          borderWidth: 2,
+          borderColor: '#0C2A1D'
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        cutout: '62%',
         plugins: {
-          legend: { position: 'right', labels: { color: '#e8f5ee', font: { size: 11 } } }
+          legend: { position: 'right', labels: { color: '#F5F6F3', boxWidth: 12, boxHeight: 12, padding: 12, font: { size: 12 } } },
+          tooltip: Object.assign({}, dica, { callbacks: { label: (c) => ` ${c.label}: ${brl(c.parsed)}` } })
         }
       }
     });
 
-    // 2. Gráfico Comparativo (Barras)
-    const ctxComp = document.getElementById('chartComparativo').getContext('2d');
-    new Chart(ctxComp, {
+    // 2. Comparativo financeiro (barras)
+    new Chart(document.getElementById('chartComparativo'), {
       type: 'bar',
       data: {
         labels: ['Recebido', 'A Receber', 'Pago', 'A Pagar', 'Atrasadas'],
         datasets: [{
-          label: 'Total (R$)',
-          data: [
-            {{ total_entradas }},
-            {{ total_a_receber }},
-            {{ total_saidas }},
-            {{ total_a_pagar }},
-            {{ total_atrasadas_valor }}
-          ],
-          backgroundColor: [
-            '#2AD07A', '#1fa85e', '#ff4d4d', '#cc0000', '#ffc107'
-          ],
-          borderRadius: 6
+          label: 'Total',
+          data: [{{ total_entradas|float }}, {{ total_a_receber|float }}, {{ total_saidas|float }}, {{ total_a_pagar|float }}, {{ total_atrasadas_valor|float }}],
+          backgroundColor: ['#25D07F', 'rgba(37, 208, 127, 0.45)', '#ff6b6b', 'rgba(255, 107, 107, 0.45)', '#ffcc00'],
+          borderRadius: 4,
+          maxBarThickness: 46
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { display: false }
+          legend: { display: false },
+          tooltip: Object.assign({}, dica, { callbacks: { label: (c) => ' ' + brl(c.parsed.y) } })
         },
         scales: {
-          y: { ticks: { color: '#7aaf8e' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-          x: { ticks: { color: '#7aaf8e' }, grid: { display: false } }
+          y: { beginAtZero: true, grid: { color: 'rgba(245, 246, 243, 0.07)' }, ticks: { callback: (v) => 'R$ ' + Number(v).toLocaleString('pt-BR') } },
+          x: { grid: { display: false } }
         }
       }
     });
   });
 </script>
+
 
 {% if notas %}
 
@@ -304,9 +311,9 @@
         <td><strong>{{ n.cliente_fornecedor or '—' }}</strong></td>
         <td class="small">{{ n.numero_nota or '—' }}</td>
         <td class="text-end fw-bold">
-          R$ {{ "%.2f"|format(n.valor) }}
+          {{ n.valor|brl }}
           {% if n.status == 'Parcial' and n.saldo_restante > 0 %}
-          <div class="small text-warning" style="font-size:0.75rem;">Falta: R$ {{ "%.2f"|format(n.saldo_restante) }}</div>
+          <div class="small text-warning" style="font-size:0.75rem;">Falta: {{ n.saldo_restante|brl }}</div>
           {% endif %}
         </td>
 
@@ -349,9 +356,9 @@
       </div>
       <div class="small text-muted">{{ n.categoria }} · Nº {{ n.numero_nota or '—' }}</div>
       <div class="fw-bold fs-6 mt-1">
-        R$ {{ "%.2f"|format(n.valor) }}
+        {{ n.valor|brl }}
         {% if n.status == 'Parcial' and n.saldo_restante > 0 %}
-        <span class="small text-warning ms-1" style="font-size:0.8rem;">(Falta: R$ {{ "%.2f"|format(n.saldo_restante) }})</span>
+        <span class="small text-warning ms-1" style="font-size:0.8rem;">(Falta: {{ n.saldo_restante|brl }})</span>
         {% endif %}
       </div>
       <div class="small text-muted" style="font-size:0.78rem;">Cadastrado por {{ n.enviado_por.nome }}</div>
@@ -382,7 +389,7 @@
 <!-- Modal Nova Categoria -->
 <div class="modal fade" id="modalNovaCategoria" tabindex="-1" aria-labelledby="modalNovaCategoriaLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="background: var(--apex-escuro); border: 1px solid rgba(42, 208, 122, 0.4); color: var(--apex-texto);">
+    <div class="modal-content">
       <div class="modal-header border-secondary">
         <h5 class="modal-title" id="modalNovaCategoriaLabel"><i class="fa-solid fa-folder-plus me-2 text-success"></i>Cadastrar Nova Categoria</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>

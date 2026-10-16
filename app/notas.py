@@ -364,6 +364,18 @@ def criar_categoria():
     return redirect(request.referrer or url_for("notas.dashboard"))
 
 
+@notas_bp.route("/notas/<int:nota_id>/arquivo")
+@login_required
+def baixar_arquivo(nota_id):
+    nota = Nota.query.get_or_404(nota_id)
+    return send_from_directory(
+        current_app.config["UPLOAD_FOLDER"],
+        nota.arquivo_nome,
+        as_attachment=False,
+        download_name=nota.arquivo_nome_original,
+    )
+
+
 @notas_bp.route("/notas/<int:nota_id>/comprovante")
 @login_required
 def baixar_comprovante(nota_id):
@@ -446,9 +458,9 @@ def exportar_excel():
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Relatório ApexTech"
+    ws.title = "Relatório Apextech"
 
-    # Estilos corporativos ApexTech
+    # Estilos corporativos Apextech
     header_font = Font(name="Arial", size=11, bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="1A5C36", end_color="1A5C36", fill_type="solid")
     center_align = Alignment(horizontal="center", vertical="center")
@@ -501,7 +513,7 @@ def exportar_excel():
     registrar_log("Exportou Relatório Excel", f"Exportou {len(notas)} registros filtrados.")
 
     res = make_response(output.getvalue())
-    res.headers["Content-Disposition"] = "attachment; filename=Relatorio_ApexTech_Financeiro.xlsx"
+    res.headers["Content-Disposition"] = "attachment; filename=Relatorio_Apextech_Financeiro.xlsx"
     res.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return res
 
@@ -661,7 +673,7 @@ def disparar_alertas():
     # Construir Corpo HTML corporativo
     html = f"""
     <div style="font-family: Arial, sans-serif; background-color: #05100A; color: #e8f5ee; padding: 20px; border-radius: 10px;">
-      <h2 style="color: #2AD07A;">🛡️ ApexTech Metais — Relatório Diário de Vencimentos</h2>
+      <h2 style="color: #2AD07A;">🛡️ Apextech Metais — Relatório Diário de Vencimentos</h2>
       <p style="color: #7aaf8e;">Resumo automático de pendências financeiras gerado em {hoje.strftime('%d/%m/%Y')}.</p>
       
       <hr style="border-color: rgba(42,208,122,0.3);" />
@@ -690,14 +702,14 @@ def disparar_alertas():
 
     html += """
       <br />
-      <p style="font-size: 12px; color: #7aaf8e;">ApexTech Metais — Sistema de Gestão Financeira</p>
+      <p style="font-size: 12px; color: #7aaf8e;">Apextech Metais — Sistema de Gestão Financeira</p>
     </div>
     """
 
     sucessos = 0
     erros = []
     for dest in emails_destinatarios:
-        ok, msg = enviar_email_alerta(dest, f"🚨 [ApexTech] Alerta de Vencimentos - {hoje.strftime('%d/%m/%Y')}", html)
+        ok, msg = enviar_email_alerta(dest, f"🚨 [Apextech] Alerta de Vencimentos - {hoje.strftime('%d/%m/%Y')}", html)
         if ok:
             sucessos += 1
         else:
@@ -784,7 +796,7 @@ def gerar_recibo_pdf(nota_id):
     p = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
 
-    # Cabeçalho ApexTech
+    # Cabeçalho Apextech
     p.setFillColorRGB(0.05, 0.16, 0.10) # #0E291B
     p.rect(0, height - 100, width, 100, fill=1)
 
@@ -845,7 +857,7 @@ def gerar_recibo_pdf(nota_id):
     p.line(320, y, 540, y)
     y -= 15
     p.setFont("Helvetica", 10)
-    p.drawString(40, y, "ApexTech Metais (Emitente)")
+    p.drawString(40, y, "Apextech Metais (Emitente)")
     p.drawString(320, y, f"{nota.cliente_fornecedor or 'Cliente / Fornecedor'}")
 
     p.showPage()
@@ -853,7 +865,7 @@ def gerar_recibo_pdf(nota_id):
 
     buffer.seek(0)
     res = make_response(buffer.getvalue())
-    res.headers["Content-Disposition"] = f"attachment; filename=Recibo_ApexTech_{nota.id}.pdf"
+    res.headers["Content-Disposition"] = f"attachment; filename=Recibo_Apextech_{nota.id}.pdf"
     res.headers["Content-Type"] = "application/pdf"
     return res
 

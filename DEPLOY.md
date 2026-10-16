@@ -74,7 +74,7 @@ no dashboard, e criar os logins dos funcionários em **Usuários**.
 
 ## 9. Ligar ao site (admin.html do ApexAmostra)
 
-No `admin.html`, já existe o link pronto no menu (seção "Gestão ApexTech"):
+No `admin.html`, já existe o link pronto no menu (seção "Gestão Apextech"):
 
 ```html
 <a href="https://SEU-APP.up.railway.app" ...>
