@@ -1,64 +1,51 @@
 """
-Rota de setup ONE-TIME para criar o admin em producao sem precisar do Shell.
-Protegida por token secreto e desativada automaticamente apos o uso.
+Criação do primeiro administrador em produção, sem precisar do Shell do Railway.
 
-REMOVA este arquivo (e o import em __init__.py) apos criar o admin!
+Segurança:
+- Só funciona se a variável SETUP_TOKEN estiver definida no Railway (não há código padrão).
+- Gera uma senha aleatória e mostra uma única vez.
+- Só cria o administrador se ainda não existir nenhum: nunca troca a senha de quem já existe.
+
+Uso: defina SETUP_TOKEN no Railway e acesse https://SEU-APP/setup/<SETUP_TOKEN>.
+Depois de entrar, apague a variável SETUP_TOKEN para desligar a rota.
 """
 import os
-from flask import Blueprint, jsonify
+import secrets
+
+from flask import Blueprint, jsonify, abort
 from . import db
 from .models import User
 
 setup_bp = Blueprint("setup", __name__)
 
-# Token secreto — so quem souber essa URL consegue usar
-_SETUP_TOKEN = os.environ.get("SETUP_TOKEN", "apex-setup-2024")
 
-_USUARIOS_SEED = [
-    {"username": "admin",       "nome": "Administrador",    "password": "Admin@123",  "is_admin": True},
-    {"username": "funcionario", "nome": "Funcionário",      "password": "Func@2024",  "is_admin": False},
-]
-
-
-@setup_bp.route(f"/setup/<token>")
+@setup_bp.route("/setup/<token>")
 def setup(token):
-    """
-    Cria os usuarios iniciais. Acesse:
-      https://seu-app.up.railway.app/setup/apex-setup-2024
-    """
-    if token != _SETUP_TOKEN:
-        return jsonify({"erro": "Token invalido."}), 403
+    esperado = os.environ.get("SETUP_TOKEN", "").strip()
+    # Sem SETUP_TOKEN definido a rota não existe; código errado também responde 404
+    if not esperado or not secrets.compare_digest(token, esperado):
+        abort(404)
 
-    criados = []
-    atualizados = []
+    if User.query.filter_by(is_admin=True).first():
+        return jsonify({
+            "status": "ja_configurado",
+            "aviso": "Já existe um administrador. Nenhuma senha foi alterada. Apague a variável SETUP_TOKEN."
+        })
 
-    for dados in _USUARIOS_SEED:
-        user = User.query.filter_by(username=dados["username"]).first()
-        if user is None:
-            user = User(
-                username=dados["username"],
-                nome=dados["nome"],
-                is_admin=dados["is_admin"],
-                ativo=True,
-            )
-            user.set_password(dados["password"])
-            db.session.add(user)
-            criados.append(dados["username"])
-        else:
-            user.set_password(dados["password"])
-            user.is_admin = dados["is_admin"]
-            user.ativo = True
-            atualizados.append(dados["username"])
-
+    senha = secrets.token_urlsafe(12)
+    admin = User.query.filter_by(username="admin").first()
+    if admin is None:
+        admin = User(username="admin", nome="Administrador", is_admin=True, ativo=True)
+        db.session.add(admin)
+    else:
+        admin.is_admin = True
+        admin.ativo = True
+    admin.set_password(senha)
     db.session.commit()
 
     return jsonify({
         "status": "ok",
-        "criados": criados,
-        "atualizados": atualizados,
-        "credenciais": [
-            {"login": u["username"], "senha": u["password"], "admin": u["is_admin"]}
-            for u in _USUARIOS_SEED
-        ],
-        "aviso": "Remova app/setup.py e o import em app/__init__.py apos usar!"
+        "login": "admin",
+        "senha": senha,
+        "aviso": "Anote a senha agora: ela não será mostrada de novo. Depois de entrar, apague a variável SETUP_TOKEN no Railway."
     })

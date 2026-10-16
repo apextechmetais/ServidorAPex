@@ -59,6 +59,14 @@ interface do GitHub, use `git pull --rebase origin main` antes do push.)
 
 ## 7. Inicializar banco e criar o admin
 
+**Sem Shell (recomendado):** no Railway, crie a variável `SETUP_TOKEN` com um código
+qualquer, difícil de adivinhar. Acesse `https://SEU-APP/setup/<SETUP_TOKEN>`: o sistema cria
+o usuário `admin` com uma senha aleatória e mostra a senha uma única vez. Entre, troque a senha
+se quiser e **apague a variável `SETUP_TOKEN`** (a rota deixa de existir). Se já houver um
+administrador, a rota não altera nenhuma senha.
+
+**Com o Railway CLI:**
+
 ```bash
 npm install -g @railway/cli
 railway login

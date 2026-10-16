@@ -13,10 +13,13 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-chave-troque-em-producao")
 
     _db_url = os.environ.get("DATABASE_URL", "sqlite:///local.db")
-    # Railway/Heroku as vezes fornecem "postgres://", mas o SQLAlchemy 1.4+
-    # exige o prefixo "postgresql://".
-    if _db_url.startswith("postgres://"):
-        _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+    # O Railway pode entregar "postgres://", "postgresql://" ou "postgresql+psycopg://"
+    # (driver psycopg 3, que não está instalado). Qualquer que seja o formato,
+    # usa o driver do requirements.txt: psycopg2.
+    for _prefixo in ("postgres://", "postgresql://", "postgresql+psycopg://", "postgresql+psycopg2://"):
+        if _db_url.startswith(_prefixo):
+            _db_url = "postgresql+psycopg2://" + _db_url[len(_prefixo):]
+            break
     SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
