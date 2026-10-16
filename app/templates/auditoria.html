@@ -26,7 +26,7 @@
           {% for log in logs %}
           <tr>
             <td class="small text-muted" style="white-space: nowrap;">
-              {{ log.criado_em.strftime('%d/%m/%Y %H:%M:%S') }}
+              {{ log.criado_em|sp('%d/%m/%Y %H:%M:%S') }}
             </td>
             <td>
               <span class="badge bg-dark border border-secondary text-light">

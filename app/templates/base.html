@@ -14,7 +14,7 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/apex-painel.css') }}?v=5">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apex-painel.css') }}?v=7">
 </head>
 <body>
 
@@ -35,27 +35,36 @@
 <div class="ap-app" id="apApp">
   <aside class="ap-sidebar" id="apSidebar" aria-label="Menu">
     <div class="ap-sidebar__topo">
-      <a href="{{ url_for('notas.dashboard') }}"><img src="{{ url_for('static', filename='img/logo-apextech.svg') }}" alt="Apextech Metais"></a>
+      <a href="{{ url_for('painel.visao_geral') }}"><img src="{{ url_for('static', filename='img/logo-apextech.svg') }}" alt="Apextech Metais"></a>
       <p>Financeiro · Notas Fiscais</p>
     </div>
 
     <nav class="ap-nav">
-      <a class="ap-nav__item {% if ep == 'notas.dashboard' %}ativo{% endif %}" href="{{ url_for('notas.dashboard') }}">
-        <i class="fa-solid fa-table-list" style="color:#25D07F;"></i><span>Contas e Documentos</span>
+      <a class="ap-nav__item {% if ep == 'painel.visao_geral' %}ativo{% endif %}" href="{{ url_for('painel.visao_geral') }}">
+        <i class="fa-solid fa-gauge-high" style="color:#25D07F;"></i><span>Visão Geral</span>
+      </a>
+      <a class="ap-nav__item {% if ep in ('notas.dashboard', 'painel.detalhe', 'notas.editar') %}ativo{% endif %}" href="{{ url_for('notas.dashboard') }}">
+        <i class="fa-solid fa-table-list" style="color:#38bdf8;"></i><span>Contas a Pagar e Receber</span>
       </a>
       <a class="ap-nav__item {% if ep == 'notas.upload' %}ativo{% endif %}" href="{{ url_for('notas.upload') }}">
-        <i class="fa-solid fa-file-arrow-up" style="color:#38bdf8;"></i><span>Enviar Documento</span>
+        <i class="fa-solid fa-circle-plus" style="color:#f0c040;"></i><span>Nova Conta</span>
+      </a>
+      <a class="ap-nav__item {% if ep and ep.startswith('documentos.') %}ativo{% endif %}" href="{{ url_for('documentos.lista') }}">
+        <i class="fa-solid fa-folder-open" style="color:#a78bfa;"></i><span>Documentos da Empresa</span>
       </a>
       {% if current_user.is_admin %}
       <p class="ap-nav__grupo">Gestão</p>
       <a class="ap-nav__item {% if ep == 'notas.dre' %}ativo{% endif %}" href="{{ url_for('notas.dre') }}">
-        <i class="fa-solid fa-chart-line" style="color:#f0c040;"></i><span>DRE Mensal</span>
+        <i class="fa-solid fa-chart-line" style="color:#25D07F;"></i><span>DRE Mensal</span>
+      </a>
+      <a class="ap-nav__item {% if ep == 'alertas.configurar' %}ativo{% endif %}" href="{{ url_for('alertas.configurar') }}">
+        <i class="fa-solid fa-bell" style="color:#fb923c;"></i><span>Alertas por E-mail</span>
       </a>
       <a class="ap-nav__item {% if ep == 'notas.auditoria' %}ativo{% endif %}" href="{{ url_for('notas.auditoria') }}">
-        <i class="fa-solid fa-shield-halved" style="color:#a78bfa;"></i><span>Auditoria</span>
+        <i class="fa-solid fa-shield-halved" style="color:#94a3b8;"></i><span>Auditoria</span>
       </a>
       <a class="ap-nav__item {% if ep == 'auth.usuarios' %}ativo{% endif %}" href="{{ url_for('auth.usuarios') }}">
-        <i class="fa-solid fa-users-gear" style="color:#fb923c;"></i><span>Usuários</span>
+        <i class="fa-solid fa-users-gear" style="color:#f472b6;"></i><span>Usuários</span>
       </a>
       {% endif %}
     </nav>

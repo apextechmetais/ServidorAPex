@@ -1,0 +1,36 @@
+{# Selo de prazo: atrasada há N dias / vence hoje / em N dias #}
+{% macro prazo(dias) -%}
+  {%- if dias is none -%}<span class="ap-prazo neutro">—</span>
+  {%- elif dias < 0 -%}<span class="ap-prazo atrasada" title="Venceu há {{ -dias }} dia(s)"><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ -dias }}d atrasada</span>
+  {%- elif dias == 0 -%}<span class="ap-prazo hoje"><i class="fa-solid fa-bell me-1"></i>Vence hoje</span>
+  {%- elif dias <= 7 -%}<span class="ap-prazo breve">em {{ dias }} dia{{ 's' if dias > 1 }}</span>
+  {%- else -%}<span class="ap-prazo ok">em {{ dias }} dias</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{# Selo da validade de um documento da empresa #}
+{% macro validade(doc) -%}
+  {%- set d = doc.dias_para_vencer -%}
+  {%- if d is none -%}<span class="ap-prazo neutro">Sem validade</span>
+  {%- elif d < 0 -%}<span class="ap-prazo atrasada"><i class="fa-solid fa-triangle-exclamation me-1"></i>Vencido há {{ -d }}d</span>
+  {%- elif d == 0 -%}<span class="ap-prazo hoje">Vence hoje</span>
+  {%- elif d <= 30 -%}<span class="ap-prazo breve">Vence em {{ d }}d</span>
+  {%- else -%}<span class="ap-prazo ok">Válido</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{# Selo do status financeiro #}
+{% macro status(n) -%}
+  {%- if n.is_atrasada -%}<span class="badge bg-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Atrasada</span>
+  {%- elif n.status in ('Pago', 'Recebido') -%}<span class="badge bg-success">{{ n.status }}</span>
+  {%- elif n.status == 'Parcial' -%}<span class="badge bg-info">Parcial</span>
+  {%- elif n.status == 'Cancelado' -%}<span class="badge bg-secondary">Cancelado</span>
+  {%- else -%}<span class="badge bg-warning">Pendente</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{# Ícone pelo tipo do arquivo #}
+{% macro icone_arquivo(nome) -%}
+  {%- set ext = (nome or '').rsplit('.', 1)[-1].lower() -%}
+  {%- if ext == 'pdf' -%}fa-file-pdf{%- elif ext in ('jpg', 'jpeg', 'png', 'webp', 'heic', 'gif') -%}fa-file-image{%- elif ext in ('xls', 'xlsx', 'ods', 'csv') -%}fa-file-excel{%- elif ext in ('doc', 'docx', 'odt') -%}fa-file-word{%- elif ext == 'zip' -%}fa-file-zipper{%- else -%}fa-file-lines{%- endif -%}
+{%- endmacro %}

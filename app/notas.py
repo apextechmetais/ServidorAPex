@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from flask import (
@@ -13,12 +13,14 @@ from sqlalchemy import func
 
 from . import db
 from .models import Nota, User, Categoria, LogAuditoria
+from .util import hoje_sp, somar_meses
+from .arquivos import salvar_upload, excluir_arquivo
 
 notas_bp = Blueprint("notas", __name__)
 
 
-def registrar_log(acao, detalhes=None):
-    """Registra uma acao no log de auditoria do sistema."""
+def registrar_log(acao, detalhes=None, referencia=None):
+    """Registra uma acao no log de auditoria do sistema (referencia: "nota:12", "doc:3")."""
     try:
         ip = request.headers.get("X-Forwarded-For", request.remote_addr)
         if ip and "," in ip:
@@ -28,7 +30,8 @@ def registrar_log(acao, detalhes=None):
             usuario_nome=current_user.nome if current_user.is_authenticated else "Sistema",
             acao=acao,
             detalhes=detalhes,
-            ip_address=ip
+            ip_address=ip,
+            referencia=referencia,
         )
         db.session.add(log)
         db.session.commit()
@@ -66,7 +69,7 @@ def parse_valor(valor_str):
         return Decimal("0")
 
 
-@notas_bp.route("/")
+@notas_bp.route("/contas")
 @login_required
 def dashboard():
     query = Nota.query
@@ -83,8 +86,25 @@ def dashboard():
     cadastrado_por = request.args.get("cadastrado_por", "")
     somente_atrasadas = request.args.get("somente_atrasadas", "")
     busca = request.args.get("busca", "").strip()
+    situacao = request.args.get("situacao", "")
 
-    hoje = datetime.utcnow().date()
+    hoje = hoje_sp()
+    aberto = Nota.status.in_(("Pendente", "Parcial"))
+    # Filtros rápidos (botões acima da lista)
+    if situacao == "a_pagar":
+        query = query.filter(aberto, Nota.tipo == "saida")
+    elif situacao == "a_receber":
+        query = query.filter(aberto, Nota.tipo == "entrada")
+    elif situacao == "atrasadas":
+        query = query.filter(aberto, Nota.data_vencimento < hoje)
+    elif situacao == "hoje":
+        query = query.filter(aberto, Nota.data_vencimento == hoje)
+    elif situacao == "7dias":
+        query = query.filter(aberto, Nota.data_vencimento >= hoje, Nota.data_vencimento <= hoje + timedelta(days=7))
+    elif situacao == "30dias":
+        query = query.filter(aberto, Nota.data_vencimento >= hoje, Nota.data_vencimento <= hoje + timedelta(days=30))
+    elif situacao == "pagas":
+        query = query.filter(Nota.status.in_(("Pago", "Recebido")))
 
     if data_inicio:
         d = parse_data(data_inicio)
@@ -113,7 +133,7 @@ def dashboard():
     if cadastrado_por and cadastrado_por.isdigit():
         query = query.filter(Nota.enviado_por_id == int(cadastrado_por))
     if somente_atrasadas == "1":
-        query = query.filter(Nota.status == "Pendente", Nota.data_vencimento < hoje)
+        query = query.filter(aberto, Nota.data_vencimento < hoje)
     if cliente:
         query = query.filter(Nota.cliente_fornecedor.ilike(f"%{cliente}%"))
     if busca:
@@ -129,13 +149,18 @@ def dashboard():
     notas = query.order_by(Nota.data_vencimento.asc().nullslast(), Nota.data_emissao.desc(), Nota.id.desc()).all()
 
     # Cálculos para resumo financeiro detalhado
-    total_entradas = sum((n.valor for n in notas if n.tipo == "entrada" and n.status == "Recebido"), Decimal("0"))
-    total_saidas = sum((n.valor for n in notas if n.tipo == "saida" and n.status == "Pago"), Decimal("0"))
-    
-    total_a_receber = sum((n.valor for n in notas if n.tipo == "entrada" and n.status == "Pendente"), Decimal("0"))
-    total_a_pagar = sum((n.valor for n in notas if n.tipo == "saida" and n.status == "Pendente"), Decimal("0"))
-    
-    total_atrasadas_valor = sum((n.valor for n in notas if n.is_atrasada), Decimal("0"))
+    def efetivado(n):
+        if n.status in ("Pago", "Recebido"):
+            return n.valor_pago if (n.valor_pago or 0) > 0 else n.valor
+        return (n.valor_pago or Decimal("0")) if n.status == "Parcial" else Decimal("0")
+
+    total_entradas = sum((efetivado(n) for n in notas if n.tipo == "entrada"), Decimal("0"))
+    total_saidas = sum((efetivado(n) for n in notas if n.tipo == "saida"), Decimal("0"))
+
+    total_a_receber = sum((n.saldo_restante for n in notas if n.tipo == "entrada" and n.em_aberto), Decimal("0"))
+    total_a_pagar = sum((n.saldo_restante for n in notas if n.tipo == "saida" and n.em_aberto), Decimal("0"))
+
+    total_atrasadas_valor = sum((n.saldo_restante for n in notas if n.is_atrasada), Decimal("0"))
     qtd_atrasadas = sum(1 for n in notas if n.is_atrasada)
 
     # Lista de clientes/fornecedores distintos para o dropdown
@@ -187,13 +212,8 @@ def dashboard():
 def upload():
     if request.method == "POST":
         arquivo = request.files.get("arquivo")
-
-        if not arquivo or arquivo.filename == "":
-            flash("Selecione um arquivo (PDF ou foto da nota).", "danger")
-            return redirect(url_for("notas.upload"))
-
-        if not arquivo_permitido(arquivo.filename):
-            flash("Formato não permitido. Envie PDF, JPG, PNG ou WEBP.", "danger")
+        if arquivo and arquivo.filename and not arquivo_permitido(arquivo.filename):
+            flash("Formato não permitido. Envie PDF, foto ou documento do Office.", "danger")
             return redirect(url_for("notas.upload"))
 
         data_emissao = parse_data(request.form.get("data_emissao"), datetime.utcnow().date())
@@ -201,13 +221,12 @@ def upload():
         data_pagamento = parse_data(request.form.get("data_pagamento"), None)
         status = request.form.get("status", "Pendente")
 
-        comprovante = request.files.get("comprovante")
-        comprovante_salvo = None
-        comprovante_orig = None
-        if comprovante and comprovante.filename:
-            if arquivo_permitido(comprovante.filename):
-                comprovante_salvo = salvar_arquivo(comprovante)
-                comprovante_orig = comprovante.filename
+        try:
+            arq = salvar_upload(arquivo)
+            comp = salvar_upload(request.files.get("comprovante"))
+        except ValueError as exc:
+            flash(str(exc), "danger")
+            return redirect(url_for("notas.upload"))
 
         valor_pago_val = parse_valor(request.form.get("valor_pago"))
         valor_val = parse_valor(request.form.get("valor"))
@@ -227,22 +246,43 @@ def upload():
             data_pagamento=data_pagamento,
             status=status,
             descricao=request.form.get("descricao", "").strip(),
-            arquivo_nome_original=arquivo.filename,
-            comprovante_nome=comprovante_salvo,
-            comprovante_nome_original=comprovante_orig,
+            arquivo_nome="",
+            arquivo_nome_original=arq.nome_original if arq else "",
+            arquivo_id=arq.id if arq else None,
+            comprovante_id=comp.id if comp else None,
+            comprovante_nome_original=comp.nome_original if comp else None,
             enviado_por_id=current_user.id,
         )
-        nota.arquivo_nome = salvar_arquivo(arquivo)
-
         db.session.add(nota)
+
+        # Repetir todo mês: cria as próximas cobranças (sem anexo, em aberto)
+        repeticoes = 0
+        if request.form.get("repetir") == "mensal":
+            try:
+                repeticoes = min(max(int(request.form.get("repetir_meses", "0")) - 1, 0), 35)
+            except ValueError:
+                repeticoes = 0
+        if repeticoes:
+            nota.grupo_recorrencia = uuid.uuid4().hex
+            for i in range(1, repeticoes + 1):
+                db.session.add(Nota(
+                    numero_nota=nota.numero_nota, tipo=nota.tipo, tipo_documento=nota.tipo_documento,
+                    categoria=nota.categoria, cliente_fornecedor=nota.cliente_fornecedor, valor=nota.valor,
+                    valor_pago=Decimal("0"), data_emissao=somar_meses(nota.data_emissao, i),
+                    data_vencimento=somar_meses(nota.data_vencimento, i) if nota.data_vencimento else None,
+                    status="Pendente", descricao=nota.descricao, arquivo_nome="", arquivo_nome_original="",
+                    grupo_recorrencia=nota.grupo_recorrencia, enviado_por_id=current_user.id,
+                ))
         db.session.commit()
 
         registrar_log(
             "Criou Documento",
             f"Nota/Doc {nota.numero_nota or nota.id} ({nota.tipo.upper()}) - R$ {nota.valor} - Cliente/Forn: {nota.cliente_fornecedor}"
+            + (f" · repetida por {repeticoes + 1} meses" if repeticoes else ""),
+            referencia=f"nota:{nota.id}",
         )
-        flash("Nota cadastrada com sucesso.", "success")
-        return redirect(url_for("notas.dashboard"))
+        flash("Conta cadastrada." + (f" Criadas também as próximas {repeticoes} cobranças mensais." if repeticoes else ""), "success")
+        return redirect(url_for("painel.detalhe", nota_id=nota.id))
 
     return render_template("upload.html", hoje=datetime.utcnow().date().isoformat())
 
@@ -267,7 +307,7 @@ def editar(nota_id):
         nota.data_vencimento = parse_data(request.form.get("data_vencimento"), nota.data_vencimento)
         nota.data_pagamento = parse_data(request.form.get("data_pagamento"), nota.data_pagamento)
         nota.status = request.form.get("status", nota.status or "Pendente")
-        
+
         # Se houve baixa parcial automatica
         if nota.status == "Pendente" and nota.valor_pago > 0 and nota.valor_pago < nota.valor:
             nota.status = "Parcial"
@@ -275,26 +315,23 @@ def editar(nota_id):
         nota.descricao = request.form.get("descricao", "").strip()
 
 
-        novo_arquivo = request.files.get("arquivo")
-        if novo_arquivo and novo_arquivo.filename:
-            if not arquivo_permitido(novo_arquivo.filename):
-                flash("Formato não permitido. Envie PDF, JPG, PNG ou WEBP.", "danger")
-                return redirect(url_for("notas.editar", nota_id=nota.id))
-            caminho_antigo = os.path.join(current_app.config["UPLOAD_FOLDER"], nota.arquivo_nome)
-            if os.path.exists(caminho_antigo):
-                os.remove(caminho_antigo)
-            nota.arquivo_nome_original = novo_arquivo.filename
-            nota.arquivo_nome = salvar_arquivo(novo_arquivo)
-
-        novo_comprovante = request.files.get("comprovante")
-        if novo_comprovante and novo_comprovante.filename:
-            if arquivo_permitido(novo_comprovante.filename):
-                if nota.comprovante_nome:
-                    caminho_antigo_comp = os.path.join(current_app.config["UPLOAD_FOLDER"], nota.comprovante_nome)
-                    if os.path.exists(caminho_antigo_comp):
-                        os.remove(caminho_antigo_comp)
-                nota.comprovante_nome_original = novo_comprovante.filename
-                nota.comprovante_nome = salvar_arquivo(novo_comprovante)
+        try:
+            novo_arq = salvar_upload(request.files.get("arquivo"))
+            novo_comp = salvar_upload(request.files.get("comprovante"))
+        except ValueError as exc:
+            flash(str(exc), "danger")
+            return redirect(url_for("notas.editar", nota_id=nota.id))
+        if novo_arq:
+            antigo = nota.arquivo_id
+            nota.arquivo_id, nota.arquivo_nome, nota.arquivo_nome_original = novo_arq.id, "", novo_arq.nome_original
+            db.session.flush()
+            excluir_arquivo(antigo)
+        if novo_comp:
+            antigo = nota.comprovante_id
+            nota.comprovante_id, nota.comprovante_nome, nota.comprovante_nome_original = novo_comp.id, None, novo_comp.nome_original
+            db.session.flush()
+            if antigo and not any(p.comprovante_id == antigo for p in nota.pagamentos):
+                excluir_arquivo(antigo)
 
         db.session.commit()
 
@@ -304,10 +341,11 @@ def editar(nota_id):
 
         registrar_log(
             acao_msg,
-            f"Nº {nota.numero_nota} - R$ {nota.valor} - Status: {nota.status}"
+            f"Nº {nota.numero_nota} - R$ {nota.valor} - Status: {nota.status}",
+            referencia=f"nota:{nota.id}",
         )
-        flash("Nota atualizada com sucesso.", "success")
-        return redirect(url_for("notas.dashboard"))
+        flash("Conta atualizada.", "success")
+        return redirect(url_for("painel.detalhe", nota_id=nota.id))
 
     return render_template("editar_nota.html", nota=nota)
 
@@ -319,20 +357,22 @@ def excluir(nota_id):
     if not nota.pode_editar(current_user):
         abort(403)
 
-    caminho = os.path.join(current_app.config["UPLOAD_FOLDER"], nota.arquivo_nome)
-    if os.path.exists(caminho):
-        os.remove(caminho)
-
-    if nota.comprovante_nome:
-        caminho_comp = os.path.join(current_app.config["UPLOAD_FOLDER"], nota.comprovante_nome)
-        if os.path.exists(caminho_comp):
-            os.remove(caminho_comp)
+    for nome in (nota.arquivo_nome, nota.comprovante_nome):
+        if nome:
+            caminho = os.path.join(current_app.config["UPLOAD_FOLDER"], os.path.basename(nome))
+            if os.path.exists(caminho):
+                os.remove(caminho)
+    ids_arquivos = {nota.arquivo_id, nota.comprovante_id} | {p.comprovante_id for p in nota.pagamentos}
 
     detalhes_log = f"Nota Nº {nota.numero_nota or nota.id} - R$ {nota.valor} - Fornecedor: {nota.cliente_fornecedor}"
+    nota_id_log = nota.id
     db.session.delete(nota)
+    db.session.flush()
+    for arq_id in ids_arquivos:
+        excluir_arquivo(arq_id)
     db.session.commit()
 
-    registrar_log("Excluiu Documento", detalhes_log)
+    registrar_log("Excluiu Documento", detalhes_log, referencia=f"nota:{nota_id_log}")
     flash("Nota excluída.", "info")
     return redirect(url_for("notas.dashboard"))
 
@@ -368,6 +408,10 @@ def criar_categoria():
 @login_required
 def baixar_arquivo(nota_id):
     nota = Nota.query.get_or_404(nota_id)
+    if nota.arquivo_id:
+        return redirect(url_for("arquivos.abrir", arquivo_id=nota.arquivo_id))
+    if not nota.arquivo_nome:
+        abort(404)
     return send_from_directory(
         current_app.config["UPLOAD_FOLDER"],
         nota.arquivo_nome,
@@ -380,6 +424,8 @@ def baixar_arquivo(nota_id):
 @login_required
 def baixar_comprovante(nota_id):
     nota = Nota.query.get_or_404(nota_id)
+    if nota.comprovante_id:
+        return redirect(url_for("arquivos.abrir", arquivo_id=nota.comprovante_id))
     if not nota.comprovante_nome:
         abort(404)
     return send_from_directory(
@@ -411,8 +457,25 @@ def exportar_excel():
     cadastrado_por = request.args.get("cadastrado_por", "")
     somente_atrasadas = request.args.get("somente_atrasadas", "")
     busca = request.args.get("busca", "").strip()
+    situacao = request.args.get("situacao", "")
 
-    hoje = datetime.utcnow().date()
+    hoje = hoje_sp()
+    aberto = Nota.status.in_(("Pendente", "Parcial"))
+    # Filtros rápidos (botões acima da lista)
+    if situacao == "a_pagar":
+        query = query.filter(aberto, Nota.tipo == "saida")
+    elif situacao == "a_receber":
+        query = query.filter(aberto, Nota.tipo == "entrada")
+    elif situacao == "atrasadas":
+        query = query.filter(aberto, Nota.data_vencimento < hoje)
+    elif situacao == "hoje":
+        query = query.filter(aberto, Nota.data_vencimento == hoje)
+    elif situacao == "7dias":
+        query = query.filter(aberto, Nota.data_vencimento >= hoje, Nota.data_vencimento <= hoje + timedelta(days=7))
+    elif situacao == "30dias":
+        query = query.filter(aberto, Nota.data_vencimento >= hoje, Nota.data_vencimento <= hoje + timedelta(days=30))
+    elif situacao == "pagas":
+        query = query.filter(Nota.status.in_(("Pago", "Recebido")))
 
     if data_inicio:
         d = parse_data(data_inicio)
@@ -441,7 +504,7 @@ def exportar_excel():
     if cadastrado_por and cadastrado_por.isdigit():
         query = query.filter(Nota.enviado_por_id == int(cadastrado_por))
     if somente_atrasadas == "1":
-        query = query.filter(Nota.status == "Pendente", Nota.data_vencimento < hoje)
+        query = query.filter(aberto, Nota.data_vencimento < hoje)
     if cliente:
         query = query.filter(Nota.cliente_fornecedor.ilike(f"%{cliente}%"))
     if busca:
@@ -635,93 +698,16 @@ def enviar_email_alerta(destinatario, assunto, corpo_html):
         return False, str(e)
 
 
-@notas_bp.route("/alertas/disparar", methods=["GET", "POST"])
+@notas_bp.route("/alertas/disparar", methods=["POST"])
 @login_required
 def disparar_alertas():
     if not current_user.is_admin:
         abort(403)
-
-    hoje = datetime.utcnow().date()
-    
-    # 1. Buscar contas a pagar que vencem HOJE
-    vencem_hoje = Nota.query.filter(
-        Nota.status == "Pendente",
-        Nota.data_vencimento == hoje
-    ).all()
-
-    # 2. Buscar contas ATRASADAS
-    atrasadas = Nota.query.filter(
-        Nota.status == "Pendente",
-        Nota.data_vencimento < hoje
-    ).all()
-
-    if not vencem_hoje and not atrasadas:
-        flash("Nenhuma conta a vencer hoje ou atrasada encontrada para alerta.", "info")
-        return redirect(url_for("notas.dashboard"))
-
-    # Buscar admins cadastrados para receber os e-mails
-    admins = User.query.filter_by(is_admin=True).all()
-    emails_destinatarios = [u.email for u in admins if u.email]
-
-    if not emails_destinatarios and current_user.email:
-        emails_destinatarios.append(current_user.email)
-
-    if not emails_destinatarios:
-        flash("Nenhum e-mail cadastrado nos administradores. Cadastre um e-mail nos usuários.", "warning")
-        return redirect(url_for("notas.dashboard"))
-
-    # Construir Corpo HTML corporativo
-    html = f"""
-    <div style="font-family: Arial, sans-serif; background-color: #05100A; color: #e8f5ee; padding: 20px; border-radius: 10px;">
-      <h2 style="color: #2AD07A;">🛡️ Apextech Metais — Relatório Diário de Vencimentos</h2>
-      <p style="color: #7aaf8e;">Resumo automático de pendências financeiras gerado em {hoje.strftime('%d/%m/%Y')}.</p>
-      
-      <hr style="border-color: rgba(42,208,122,0.3);" />
-
-      <h3 style="color: #ffc107;">📌 Contas a Pagar que Vencem HOJE ({len(vencem_hoje)})</h3>
-    """
-    if vencem_hoje:
-        html += "<ul style='background: #0E291B; padding: 15px; border-radius: 6px; list-style: none;'>"
-        for n in vencem_hoje:
-            html += f"<li style='margin-bottom: 8px;'><strong>{n.cliente_fornecedor or 'Sem Fornecedor'}</strong> - R$ {n.valor:.2f} ({n.categoria})</li>"
-        html += "</ul>"
-    else:
-        html += "<p style='color: #7aaf8e;'>Nenhuma conta vence hoje.</p>"
-
-    html += f"""
-      <h3 style="color: #ff4d4d;">🚨 Contas ATRASADAS ({len(atrasadas)})</h3>
-    """
-    if atrasadas:
-        html += "<ul style='background: #3d0f0f; padding: 15px; border-radius: 6px; list-style: none;'>"
-        for n in atrasadas:
-            venc_str = n.data_vencimento.strftime('%d/%m/%Y') if n.data_vencimento else 'N/A'
-            html += f"<li style='margin-bottom: 8px;'><strong>{n.cliente_fornecedor or 'Sem Fornecedor'}</strong> - R$ {n.valor:.2f} (Venceu em: {venc_str})</li>"
-        html += "</ul>"
-    else:
-        html += "<p style='color: #7aaf8e;'>Nenhuma conta em atraso!</p>"
-
-    html += """
-      <br />
-      <p style="font-size: 12px; color: #7aaf8e;">Apextech Metais — Sistema de Gestão Financeira</p>
-    </div>
-    """
-
-    sucessos = 0
-    erros = []
-    for dest in emails_destinatarios:
-        ok, msg = enviar_email_alerta(dest, f"🚨 [Apextech] Alerta de Vencimentos - {hoje.strftime('%d/%m/%Y')}", html)
-        if ok:
-            sucessos += 1
-        else:
-            erros.append(f"{dest}: {msg}")
-
-    if sucessos > 0:
-        registrar_log("Disparou Alertas por E-mail", f"Enviado para {sucessos} destinatário(s). Vencem hoje: {len(vencem_hoje)}, Atrasadas: {len(atrasadas)}")
-        flash(f"Alertas disparados por e-mail com sucesso para {sucessos} administrador(es)!", "success")
-    else:
-        flash(f"Erro ao enviar e-mails de alerta: {'; '.join(erros)}", "danger")
-
-    return redirect(url_for("notas.dashboard"))
+    from .alertas import enviar_resumo
+    ok, msg = enviar_resumo(forcar=True)
+    registrar_log("Disparou Alertas por E-mail", msg)
+    flash(("Resumo de vencimentos enviado. " if ok else "Não foi possível enviar. ") + msg, "success" if ok else "danger")
+    return redirect(request.referrer or url_for("notas.dashboard"))
 
 
 @notas_bp.route("/ocr/analisar", methods=["POST"])

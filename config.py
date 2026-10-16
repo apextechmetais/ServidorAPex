@@ -33,7 +33,27 @@ class Config:
     PAINEL_URL = os.environ.get("PAINEL_URL", "https://apextechmetais.com.br/admin.html")
 
     MAX_CONTENT_LENGTH = 15 * 1024 * 1024  # 15 MB por arquivo
-    ALLOWED_EXTENSIONS = {"pdf", "jpg", "jpeg", "png", "webp", "heic"}
+    ALLOWED_EXTENSIONS = {
+        "pdf", "jpg", "jpeg", "png", "webp", "heic",
+        # documentos da empresa
+        "doc", "docx", "xls", "xlsx", "odt", "ods", "txt", "csv", "xml", "zip",
+    }
+
+    CATEGORIAS_DOCUMENTOS = [
+        "Contratos",
+        "Alvarás e Licenças",
+        "Certidões",
+        "Documentos Societários",
+        "Fiscal e Tributário",
+        "Ambiental",
+        "Recursos Humanos",
+        "Seguros",
+        "Bancário",
+        "Imóvel e Veículos",
+        "Outros",
+    ]
+
+    FORMAS_PAGAMENTO = ["PIX", "Boleto", "Transferência", "Dinheiro", "Cartão", "Débito automático", "Cheque", "Outro"]
 
     CATEGORIAS = [
         "Conta de Luz",

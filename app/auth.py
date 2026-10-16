@@ -14,7 +14,7 @@ def admin_required(f):
     def wrapper(*args, **kwargs):
         if not current_user.is_authenticated or not current_user.is_admin:
             flash("Apenas administradores podem acessar essa página.", "danger")
-            return redirect(url_for("notas.dashboard"))
+            return redirect(url_for("painel.visao_geral"))
         return f(*args, **kwargs)
 
     return wrapper
@@ -32,7 +32,7 @@ TEMPO_BLOQUEIO_SEGUNDOS = 300  # 5 minutos
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for("notas.dashboard"))
+        return redirect(url_for("painel.visao_geral"))
 
     if request.method == "POST":
         from flask import current_app
@@ -70,7 +70,7 @@ def login():
             TENTATIVAS_LOGIN.pop(chave_bloqueio, None)
             login_user(user, remember=True)
             next_page = request.args.get("next")
-            return redirect(next_page or url_for("notas.dashboard"))
+            return redirect(next_page or url_for("painel.visao_geral"))
 
         # 2. Fallback: tenta ApexAmostra (se URL configurada)
         apex_url = current_app.config.get("APEX_AMOSTRA_URL", "")
@@ -87,7 +87,7 @@ def login():
                 )
                 login_user(shadow, remember=True)
                 next_page = request.args.get("next")
-                return redirect(next_page or url_for("notas.dashboard"))
+                return redirect(next_page or url_for("painel.visao_geral"))
 
         # Login falhou: incrementa contador de tentativas incorretas
         tentativas_atuais = info_tentativas["tentativas"] + 1

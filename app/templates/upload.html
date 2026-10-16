@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Enviar nota{% endblock %}
+{% block title %}Nova conta{% endblock %}
 {% block content %}
 <header class="ap-cabecalho">
   <div>
-    <h1><i class="fa-solid fa-file-arrow-up"></i> Enviar Documento</h1>
-    <p>Nota fiscal, boleto, contrato ou foto. O sistema tenta ler o valor e o vencimento sozinho.</p>
+    <h1><i class="fa-solid fa-circle-plus"></i> Nova Conta</h1>
+    <p>Conta a pagar ou a receber. Anexe o boleto ou a nota se já tiver: o sistema tenta ler o valor e o vencimento sozinho.</p>
   </div>
 </header>
 <div class="card">
@@ -15,11 +15,11 @@
       <div class="row g-3 mb-3">
         <div class="col-12 col-md-6">
           <label class="form-label d-flex justify-content-between align-items-center">
-            <span>Arquivo Principal (Nota Fiscal / Boleto / Foto)</span>
+            <span>Boleto / nota fiscal / foto (opcional)</span>
             <span id="ocrBadgeStatus" class="badge bg-secondary style-none" style="display: none;"><i class="fa-solid fa-spinner fa-spin me-1"></i> Lendo documento (IA/OCR)...</span>
           </label>
-          <input type="file" name="arquivo" id="inputArquivoPrincipal" class="form-control" accept=".pdf,image/*" capture="environment" required>
-          <div class="form-text">PDF ou foto do documento. O sistema tentará ler o valor e vencimento automaticamente!</div>
+          <input type="file" name="arquivo" id="inputArquivoPrincipal" class="form-control" accept=".pdf,image/*,.doc,.docx,.xls,.xlsx">
+          <div class="form-text">Pode cadastrar sem anexo e anexar depois, quando o boleto chegar.</div>
         </div>
         <div class="col-12 col-md-6">
           <label class="form-label">Comprovante de Pagamento / PIX (Opcional)</label>
@@ -35,7 +35,7 @@
           <label class="form-label">Tipo</label>
           <select name="tipo" class="form-select">
             <option value="entrada">Entrada (venda)</option>
-            <option value="saida">Saída (compra/despesa)</option>
+            <option value="saida" selected>Saída (compra/despesa)</option>
           </select>
         </div>
         <div class="col-6">
@@ -100,9 +100,21 @@
           <textarea name="descricao" class="form-control" rows="2"></textarea>
         </div>
 
+        <div class="col-6 col-md-4">
+          <label class="form-label">Repetir</label>
+          <select name="repetir" id="selRepetir" class="form-select" onchange="document.getElementById('boxMeses').style.display = this.value === 'mensal' ? '' : 'none';">
+            <option value="">Não repetir</option>
+            <option value="mensal">Todo mês (conta fixa: aluguel, luz, internet…)</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3" id="boxMeses" style="display:none;">
+          <label class="form-label">Por quantos meses (contando este)</label>
+          <input type="number" name="repetir_meses" class="form-control" min="2" max="36" value="12">
+        </div>
+
       </div>
 
-      <button type="submit" class="btn btn-primary mt-3 w-100">Enviar nota</button>
+      <button type="submit" class="btn btn-primary mt-3 w-100"><i class="fa-solid fa-floppy-disk me-1"></i> Salvar conta</button>
     </form>
   </div>
 </div>

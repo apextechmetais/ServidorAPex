@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% from "_macros.html" import validade, icone_arquivo %}
+{% block title %}Documentos da Empresa{% endblock %}
+{% block content %}
+<header class="ap-cabecalho">
+  <div>
+    <h1><i class="fa-solid fa-folder-open"></i> Documentos da Empresa</h1>
+    <p>Contratos, alvarás, certidões, documentos societários, RH, seguros e tudo o que a empresa precisa guardar.</p>
+  </div>
+  <div class="ap-cabecalho__acoes">
+    <a href="{{ url_for('documentos.novo') }}" class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i> Guardar documento</a>
+  </div>
+</header>
+
+{% set sit = filtros.get('situacao', '') %}
+<div class="ap-chips">
+  <a class="ap-chip {{ 'ativo' if not sit }}" href="{{ url_for('documentos.lista') }}">Todos <span>{{ contagem.total }}</span></a>
+  <a class="ap-chip {{ 'ativo' if sit == 'vencido' }}" href="{{ url_for('documentos.lista', situacao='vencido') }}"><i class="fa-solid fa-triangle-exclamation"></i> Vencidos <span>{{ contagem.vencido }}</span></a>
+  <a class="ap-chip {{ 'ativo' if sit == 'vencendo' }}" href="{{ url_for('documentos.lista', situacao='vencendo') }}"><i class="fa-solid fa-clock"></i> Vencem em 30 dias <span>{{ contagem.vencendo }}</span></a>
+  <a class="ap-chip {{ 'ativo' if sit == 'valido' }}" href="{{ url_for('documentos.lista', situacao='valido') }}"><i class="fa-solid fa-circle-check"></i> Válidos <span>{{ contagem.valido }}</span></a>
+  <a class="ap-chip {{ 'ativo' if sit == 'sem_validade' }}" href="{{ url_for('documentos.lista', situacao='sem_validade') }}">Sem validade <span>{{ contagem.sem_validade }}</span></a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      {% if sit %}<input type="hidden" name="situacao" value="{{ sit }}">{% endif %}
+      <div class="col-12 col-md-4">
+        <label class="form-label">Buscar</label>
+        <input type="text" name="busca" class="form-control" placeholder="Título, número, órgão ou descrição" value="{{ filtros.get('busca', '') }}">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label">Categoria</label>
+        <select name="categoria" class="form-select">
+          <option value="">Todas</option>
+          {% for c in categorias_doc %}<option value="{{ c }}" {{ 'selected' if filtros.get('categoria') == c }}>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label">Emitido de</label>
+        <input type="date" name="emissao_de" class="form-control" value="{{ filtros.get('emissao_de', '') }}">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label">Emitido até</label>
+        <input type="date" name="emissao_ate" class="form-control" value="{{ filtros.get('emissao_ate', '') }}">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label">Validade até</label>
+        <input type="date" name="validade_ate" class="form-control" value="{{ filtros.get('validade_ate', '') }}">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label">Guardado por</label>
+        <select name="enviado_por" class="form-select">
+          <option value="">Todos os usuários</option>
+          {% for u in usuarios %}<option value="{{ u.id }}" {{ 'selected' if filtros.get('enviado_por') == u.id|string }}>{{ u.nome }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label">Ordenar por</label>
+        <select name="ordem" class="form-select">
+          <option value="validade" {{ 'selected' if filtros.get('ordem', 'validade') == 'validade' }}>Validade mais próxima</option>
+          <option value="recentes" {{ 'selected' if filtros.get('ordem') == 'recentes' }}>Guardados recentemente</option>
+          <option value="titulo" {{ 'selected' if filtros.get('ordem') == 'titulo' }}>Título (A–Z)</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-6 d-flex gap-2 justify-content-md-end">
+        {% if filtros %}<a href="{{ url_for('documentos.lista') }}" class="btn btn-outline-secondary">Limpar</a>{% endif %}
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-filter me-1"></i> Filtrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if documentos %}
+<div class="table-responsive">
+  <table class="table align-middle">
+    <thead>
+      <tr>
+        <th>Documento</th>
+        <th>Categoria</th>
+        <th>Número / Órgão</th>
+        <th>Emissão</th>
+        <th>Validade</th>
+        <th>Situação</th>
+        <th class="text-end">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in documentos %}
+      <tr>
+        <td>
+          <div class="d-flex align-items-center gap-2">
+            <i class="fa-solid {{ icone_arquivo(d.arquivo.nome_original) }}" style="color:#a78bfa; font-size:1.2rem;"></i>
+            <div style="min-width:0;">
+              <a href="{{ url_for('arquivos.abrir', arquivo_id=d.arquivo_id) }}" target="_blank" style="color:#fff; font-weight:600; text-decoration:none;">{{ d.titulo }}</a>
+              {% if d.descricao %}<div class="small text-muted" style="max-width:360px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.descricao }}</div>{% endif %}
+            </div>
+          </div>
+        </td>
+        <td><span class="badge bg-secondary">{{ d.categoria }}</span></td>
+        <td class="small">{% if d.numero %}{{ d.numero }}{% endif %}{% if d.orgao %}<div class="{{ 'text-muted' if d.numero }}">{{ d.orgao }}</div>{% endif %}{% if not d.numero and not d.orgao %}—{% endif %}</td>
+        <td class="small text-muted">{{ d.data_emissao.strftime('%d/%m/%Y') if d.data_emissao else '—' }}</td>
+        <td class="small">{{ d.data_validade.strftime('%d/%m/%Y') if d.data_validade else '—' }}</td>
+        <td>{{ validade(d) }}</td>
+        <td class="text-end">
+          <a href="{{ url_for('arquivos.abrir', arquivo_id=d.arquivo_id) }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Abrir"><i class="fa-solid fa-eye"></i></a>
+          <a href="{{ url_for('arquivos.abrir', arquivo_id=d.arquivo_id, acao='baixar') }}" class="btn btn-sm btn-outline-secondary" title="Baixar"><i class="fa-solid fa-download"></i></a>
+          {% if d.pode_editar(current_user) %}
+          <a href="{{ url_for('documentos.editar', doc_id=d.id) }}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="fa-solid fa-pen"></i></a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="mt-2" style="color:var(--ap-texto-2); font-size:0.85rem;">{{ documentos|length }} documento(s).</p>
+{% else %}
+<div class="alert alert-info text-center py-4">
+  <i class="fa-solid fa-folder-open fs-2 mb-2 d-block"></i>
+  {% if filtros %}Nenhum documento com esses filtros.{% else %}Nenhum documento guardado ainda. <a href="{{ url_for('documentos.novo') }}">Guardar o primeiro</a>.{% endif %}
+</div>
+{% endif %}
+{% endblock %}

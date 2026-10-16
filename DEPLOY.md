@@ -52,6 +52,13 @@ interface do GitHub, use `git pull --rebase origin main` antes do push.)
 | `UPLOAD_FOLDER` | `/data/uploads` |
 | `ADMIN_PASSWORD` | senha do administrador (cria/atualiza o usuário `admin` ao iniciar) |
 | `ADMIN_USERNAME` | opcional, padrão `admin` |
+| `RESEND_API_KEY` | chave do Resend para os alertas de vencimento por e-mail |
+| `MAIL_FROM` | opcional, padrão `Apextech Metais <noreply@apextechmetais.com.br>` |
+| `APP_URL` | endereço público deste sistema (links dentro do e-mail) |
+
+Arquivos (notas, comprovantes, documentos da empresa) ficam **no banco de dados**: o volume
+não é mais obrigatório. Se houver arquivos antigos no volume, eles são copiados para o banco
+sozinhos quando o servidor inicia.
 
 ## 6. Deploy e domínio
 

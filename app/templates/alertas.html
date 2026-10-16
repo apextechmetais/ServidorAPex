@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Alertas por E-mail{% endblock %}
+{% block content %}
+<header class="ap-cabecalho">
+  <div>
+    <h1><i class="fa-solid fa-bell"></i> Alertas por E-mail</h1>
+    <p>Todo dia, no horário escolhido, o sistema manda um resumo com o que está atrasado, vence hoje e vence nos próximos dias.</p>
+  </div>
+  <div class="ap-cabecalho__acoes">
+    <form method="post" action="{{ url_for('alertas.enviar_agora') }}" class="m-0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-outline-warning"><i class="fa-solid fa-paper-plane me-1"></i> Enviar agora</button>
+    </form>
+  </div>
+</header>
+
+{% if not envio_resend and not envio_smtp %}
+<div class="alert alert-warning">
+  <i class="fa-solid fa-triangle-exclamation me-2"></i>
+  <strong>O envio de e-mail ainda não está configurado.</strong> No Railway, crie a variável <code>RESEND_API_KEY</code> (a mesma conta de e-mail do painel) e, se quiser, <code>MAIL_FROM</code> (padrão: Apextech Metais &lt;noreply@apextechmetais.com.br&gt;). Para os links do e-mail abrirem o sistema, crie também <code>APP_URL</code> com o endereço deste site.
+</div>
+{% endif %}
+
+<div class="ap-grade-2">
+  <section class="ap-bloco">
+    <div class="ap-bloco__topo"><h2><i class="fa-solid fa-sliders"></i> Configuração</h2></div>
+    <form method="post" class="row g-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="col-12">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" name="alertas_ativos" id="ativos" {{ 'checked' if cfg.alertas_ativos == '1' }}>
+          <label class="form-check-label" for="ativos" style="color:#fff;">Enviar o resumo automaticamente todo dia</label>
+        </div>
+      </div>
+      <div class="col-6">
+        <label class="form-label">Horário (Brasília)</label>
+        <input type="time" name="alertas_horario" class="form-control" value="{{ cfg.alertas_horario }}" required>
+      </div>
+      <div class="col-6">
+        <label class="form-label">Avisar contas com quantos dias de antecedência</label>
+        <input type="number" name="alertas_dias_antes" class="form-control" min="0" max="60" value="{{ cfg.alertas_dias_antes }}">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Avisar documentos que vencem em até (dias)</label>
+        <input type="number" name="alertas_dias_validade" class="form-control" min="0" max="365" value="{{ cfg.alertas_dias_validade }}">
+      </div>
+      <div class="col-6 d-flex align-items-end">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="alertas_incluir_receber" id="receber" {{ 'checked' if cfg.alertas_incluir_receber == '1' }}>
+          <label class="form-check-label" for="receber">Incluir também contas a receber</label>
+        </div>
+      </div>
+      <div class="col-12">
+        <label class="form-label">E-mails extras (separados por vírgula)</label>
+        <input type="text" name="alertas_destinatarios" class="form-control" placeholder="financeiro@apextechmetais.com.br, diretoria@apextechmetais.com.br" value="{{ cfg.alertas_destinatarios }}">
+        <div class="form-text">Os administradores com e-mail cadastrado em Usuários já recebem.</div>
+      </div>
+      <div class="col-12">
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> Salvar configuração</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="ap-bloco">
+    <div class="ap-bloco__topo"><h2><i class="fa-solid fa-envelope-open-text"></i> Quem recebe</h2></div>
+    {% if destinatarios %}
+    <ul class="ap-lista">
+      {% for e in destinatarios %}<li><i class="fa-solid fa-at" style="color:var(--ap-verde);"></i><span>{{ e }}</span></li>{% endfor %}
+    </ul>
+    {% else %}
+    <p class="ap-vazio"><i class="fa-solid fa-circle-info"></i>Ninguém ainda. Cadastre o e-mail dos administradores em <a href="{{ url_for('auth.usuarios') }}">Usuários</a> ou adicione e-mails extras ao lado.</p>
+    {% endif %}
+    <p class="mt-3 mb-1" style="color:var(--ap-texto-2); font-size:0.85rem;">
+      Envio por: {% if envio_resend %}<strong style="color:#fff;">Resend</strong>{% elif envio_smtp %}<strong style="color:#fff;">SMTP</strong>{% else %}<strong class="text-warning">não configurado</strong>{% endif %}
+    </p>
+
+    <div class="ap-bloco__topo mt-4"><h2><i class="fa-solid fa-eye"></i> O resumo de hoje teria</h2></div>
+    <ul class="ap-lista">
+      <li><span class="ap-prazo atrasada">{{ resumo.atrasadas|length }}</span><span>conta(s) atrasada(s)</span></li>
+      <li><span class="ap-prazo hoje">{{ resumo.hoje_lista|length }}</span><span>conta(s) vencendo hoje</span></li>
+      <li><span class="ap-prazo breve">{{ resumo.proximas|length }}</span><span>conta(s) nos próximos {{ resumo.dias_antes }} dias</span></li>
+      <li><span class="ap-prazo neutro">{{ resumo.documentos|length }}</span><span>documento(s) com validade em até {{ resumo.dias_validade }} dias</span></li>
+    </ul>
+    {% if resumo.vazio %}<p class="ap-vazio mb-0"><i class="fa-solid fa-circle-check"></i>Sem pendências: nos dias assim nenhum e-mail é enviado.</p>{% endif %}
+  </section>
+</div>
+
+<section class="ap-bloco">
+  <div class="ap-bloco__topo"><h2><i class="fa-solid fa-clock-rotate-left"></i> Envios automáticos</h2></div>
+  {% if historico %}
+  <ul class="ap-lista">
+    {% for h in historico %}
+    <li>
+      <span class="ap-prazo {{ 'ok' if (h.resultado or '').startswith('OK') else 'atrasada' }}">{{ h.dia.strftime('%d/%m/%Y') }}</span>
+      <div style="min-width:0;"><span class="titulo">{{ h.resultado or '—' }}</span><div class="meta">{{ h.enviado_em|sp }}</div></div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="ap-vazio"><i class="fa-solid fa-circle-info"></i>Nenhum envio automático ainda. O primeiro sai no próximo horário configurado.</p>
+  {% endif %}
+</section>
+{% endblock %}

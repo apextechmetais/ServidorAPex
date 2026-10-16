@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% from "_macros.html" import prazo, validade %}
+{% block title %}Visão Geral{% endblock %}
+{% block content %}
+<header class="ap-cabecalho">
+  <div>
+    <h1><i class="fa-solid fa-gauge-high"></i> Visão Geral</h1>
+    <p>Tudo o que foi pago, o que falta pagar e o que vence nos próximos dias · {{ hoje.strftime('%d/%m/%Y') }}</p>
+  </div>
+  <div class="ap-cabecalho__acoes">
+    {% if current_user.is_admin %}
+    <form method="post" action="{{ url_for('alertas.enviar_agora') }}" class="m-0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-outline-warning" title="Enviar agora o resumo de vencimentos por e-mail"><i class="fa-solid fa-paper-plane me-1"></i> Enviar alerta</button>
+    </form>
+    {% endif %}
+    <a href="{{ url_for('documentos.novo') }}" class="btn btn-outline-secondary"><i class="fa-solid fa-folder-plus me-1"></i> Guardar documento</a>
+    <a href="{{ url_for('notas.upload') }}" class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i> Nova conta</a>
+  </div>
+</header>
+
+<div class="ap-kpis ap-kpis--3">
+  <a class="ap-kpi-card" style="--cor:#ff6b6b;" href="{{ url_for('notas.dashboard', situacao='a_pagar') }}">
+    <div class="rotulo"><i class="fa-solid fa-file-invoice-dollar"></i> A pagar (em aberto)</div>
+    <div class="valor">{{ kpis.a_pagar|brl }}</div>
+    <div class="sub">{{ kpis.qtd_a_pagar }} conta(s) em aberto</div>
+  </a>
+  <a class="ap-kpi-card" style="--cor:#ff6b6b;" href="{{ url_for('notas.dashboard', situacao='atrasadas') }}">
+    <div class="rotulo"><i class="fa-solid fa-triangle-exclamation"></i> Atrasado</div>
+    <div class="valor">{{ kpis.atrasado|brl }}</div>
+    <div class="sub">{{ kpis.qtd_atrasado }} conta(s) a pagar vencida(s)</div>
+  </a>
+  <a class="ap-kpi-card" style="--cor:#fb923c;" href="{{ url_for('notas.dashboard', situacao='7dias') }}">
+    <div class="rotulo"><i class="fa-solid fa-clock"></i> Vence em 7 dias</div>
+    <div class="valor">{{ kpis.vence_7|brl }}</div>
+    <div class="sub">{{ kpis.qtd_vence_7 }} conta(s) a pagar</div>
+  </a>
+  <a class="ap-kpi-card" style="--cor:#25D07F;" href="{{ url_for('notas.dashboard', situacao='pagas') }}">
+    <div class="rotulo"><i class="fa-solid fa-circle-check"></i> Pago neste mês</div>
+    <div class="valor">{{ kpis.pago_mes|brl }}</div>
+    <div class="sub">Baixas de contas a pagar em {{ hoje.strftime('%m/%Y') }}</div>
+  </a>
+  <a class="ap-kpi-card" style="--cor:#38bdf8;" href="{{ url_for('notas.dashboard', situacao='a_receber') }}">
+    <div class="rotulo"><i class="fa-solid fa-hand-holding-dollar"></i> A receber</div>
+    <div class="valor">{{ kpis.a_receber|brl }}</div>
+    <div class="sub">{{ kpis.qtd_a_receber }} conta(s) a receber</div>
+  </a>
+  <div class="ap-kpi-card" style="--cor:#38bdf8;">
+    <div class="rotulo"><i class="fa-solid fa-arrow-trend-up"></i> Recebido neste mês</div>
+    <div class="valor">{{ kpis.recebido_mes|brl }}</div>
+    <div class="sub">Saldo do mês: {{ (kpis.recebido_mes - kpis.pago_mes)|brl }}</div>
+  </div>
+</div>
+
+<div class="ap-grade-2">
+  <section class="ap-bloco">
+    <div class="ap-bloco__topo">
+      <h2><i class="fa-solid fa-calendar-day"></i> Próximos vencimentos (30 dias)</h2>
+      <a href="{{ url_for('notas.dashboard', situacao='30dias') }}">Ver todos ({{ qtd_proximos }})</a>
+    </div>
+    {% if proximos %}
+    <ul class="ap-lista">
+      {% for n in proximos %}
+      <li>
+        {{ prazo(n.dias_para_vencer) }}
+        <div style="min-width:0;">
+          <a class="titulo" href="{{ url_for('painel.detalhe', nota_id=n.id) }}">{{ n.cliente_fornecedor or n.categoria or 'Sem fornecedor' }}</a>
+          <div class="meta">{{ 'A receber' if n.tipo == 'entrada' else 'A pagar' }} · {{ n.categoria or '—' }} · vence {{ n.data_vencimento.strftime('%d/%m/%Y') }}</div>
+        </div>
+        <div class="valor {{ 'text-info' if n.tipo == 'entrada' }}">{{ n.saldo_restante|brl }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="ap-vazio"><i class="fa-solid fa-circle-check"></i>Nada vence nos próximos 30 dias.</p>
+    {% endif %}
+  </section>
+
+  <section class="ap-bloco">
+    <div class="ap-bloco__topo">
+      <h2><i class="fa-solid fa-triangle-exclamation" style="color:#ff6b6b;"></i> Atrasadas</h2>
+      <a href="{{ url_for('notas.dashboard', situacao='atrasadas') }}">Ver todas ({{ qtd_atrasadas }})</a>
+    </div>
+    {% if atrasadas %}
+    <ul class="ap-lista">
+      {% for n in atrasadas %}
+      <li>
+        {{ prazo(n.dias_para_vencer) }}
+        <div style="min-width:0;">
+          <a class="titulo" href="{{ url_for('painel.detalhe', nota_id=n.id) }}">{{ n.cliente_fornecedor or n.categoria or 'Sem fornecedor' }}</a>
+          <div class="meta">{{ 'A receber' if n.tipo == 'entrada' else 'A pagar' }} · {{ n.categoria or '—' }} · venceu {{ n.data_vencimento.strftime('%d/%m/%Y') }}</div>
+        </div>
+        <div class="valor text-danger">{{ n.saldo_restante|brl }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="ap-vazio"><i class="fa-solid fa-circle-check"></i>Nenhuma conta atrasada.</p>
+    {% endif %}
+  </section>
+</div>
+
+<div class="ap-grade-2">
+  <section class="ap-bloco">
+    <div class="ap-bloco__topo"><h2><i class="fa-solid fa-chart-column"></i> Pago e recebido nos últimos 12 meses</h2></div>
+    <div style="height:260px; position:relative;"><canvas id="graficoHistorico" role="img" aria-label="Pago e recebido por mês nos últimos 12 meses"></canvas></div>
+  </section>
+  <section class="ap-bloco">
+    <div class="ap-bloco__topo"><h2><i class="fa-solid fa-calendar-week"></i> A vencer nos próximos 6 meses</h2></div>
+    <div style="height:260px; position:relative;"><canvas id="graficoAgenda" role="img" aria-label="Valores a pagar e a receber por mês de vencimento"></canvas></div>
+    <p class="meta mb-0 mt-2" style="font-size:0.8rem; color:var(--ap-texto-2);">O mês atual inclui as contas atrasadas.</p>
+  </section>
+</div>
+
+<section class="ap-bloco">
+  <div class="ap-bloco__topo">
+    <h2><i class="fa-solid fa-folder-open" style="color:#a78bfa;"></i> Documentos da empresa com validade próxima</h2>
+    <a href="{{ url_for('documentos.lista', situacao='vencendo') }}">Ver documentos</a>
+  </div>
+  {% if documentos %}
+  <ul class="ap-lista">
+    {% for d in documentos %}
+    <li>
+      {{ validade(d) }}
+      <div style="min-width:0;">
+        <a class="titulo" href="{{ url_for('arquivos.abrir', arquivo_id=d.arquivo_id) }}" target="_blank">{{ d.titulo }}</a>
+        <div class="meta">{{ d.categoria }} · validade {{ d.data_validade.strftime('%d/%m/%Y') }}</div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="ap-vazio"><i class="fa-solid fa-circle-check"></i>Nenhum documento vencido ou vencendo nos próximos 30 dias.</p>
+  {% endif %}
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    Chart.defaults.font.family = "'Archivo', 'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.color = 'rgba(245, 246, 243, 0.72)';
+    const brl = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const dica = { backgroundColor: '#0C2A1D', borderColor: 'rgba(245, 246, 243, 0.18)', borderWidth: 1, padding: 12, cornerRadius: 8,
+                   callbacks: { label: (c) => ` ${c.dataset.label}: ${brl(c.parsed.y)}` } };
+    const eixos = {
+      y: { beginAtZero: true, grid: { color: 'rgba(245, 246, 243, 0.07)' }, ticks: { callback: (v) => 'R$ ' + Number(v).toLocaleString('pt-BR') } },
+      x: { grid: { display: false } }
+    };
+    const legenda = { labels: { color: '#F5F6F3', boxWidth: 12, boxHeight: 12, padding: 14 } };
+
+    new Chart(document.getElementById('graficoHistorico'), {
+      type: 'bar',
+      data: {
+        labels: {{ historico_labels|tojson }},
+        datasets: [
+          { label: 'Pago', data: {{ historico_pago|tojson }}, backgroundColor: '#ff6b6b', borderRadius: 4, maxBarThickness: 22 },
+          { label: 'Recebido', data: {{ historico_recebido|tojson }}, backgroundColor: '#25D07F', borderRadius: 4, maxBarThickness: 22 }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: eixos, plugins: { legend: legenda, tooltip: dica } }
+    });
+
+    new Chart(document.getElementById('graficoAgenda'), {
+      type: 'bar',
+      data: {
+        labels: {{ agenda_labels|tojson }},
+        datasets: [
+          { label: 'A pagar', data: {{ agenda_pagar|tojson }}, backgroundColor: '#fb923c', borderRadius: 4, maxBarThickness: 28 },
+          { label: 'A receber', data: {{ agenda_receber|tojson }}, backgroundColor: '#38bdf8', borderRadius: 4, maxBarThickness: 28 }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: eixos, plugins: { legend: legenda, tooltip: dica } }
+    });
+  });
+</script>
+{% endblock %}

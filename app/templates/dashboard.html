@@ -1,19 +1,33 @@
 {% extends "base.html" %}
+{% from "_macros.html" import prazo %}
 {% block title %}Início{% endblock %}
 {% block content %}
 <header class="ap-cabecalho">
   <div>
-    <h1><i class="fa-solid fa-table-list"></i> Contas e Documentos</h1>
+    <h1><i class="fa-solid fa-table-list"></i> Contas a Pagar e Receber</h1>
     <p>Contas a pagar e a receber, notas fiscais, boletos e comprovantes.</p>
   </div>
   <div class="ap-cabecalho__acoes">
-    <a href="{{ url_for('notas.upload') }}" class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i> Enviar Documento</a>
+    <a href="{{ url_for('notas.upload') }}" class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i> Nova conta</a>
   </div>
 </header>
+
+{% set sit = filtros.get('situacao', '') %}
+<div class="ap-chips">
+  <a class="ap-chip {{ 'ativo' if not sit }}" href="{{ url_for('notas.dashboard') }}">Todas</a>
+  <a class="ap-chip {{ 'ativo' if sit == 'a_pagar' }}" href="{{ url_for('notas.dashboard', situacao='a_pagar') }}"><i class="fa-solid fa-arrow-up"></i> A pagar</a>
+  <a class="ap-chip {{ 'ativo' if sit == 'a_receber' }}" href="{{ url_for('notas.dashboard', situacao='a_receber') }}"><i class="fa-solid fa-arrow-down"></i> A receber</a>
+  <a class="ap-chip {{ 'ativo' if sit == 'atrasadas' }}" href="{{ url_for('notas.dashboard', situacao='atrasadas') }}"><i class="fa-solid fa-triangle-exclamation"></i> Atrasadas</a>
+  <a class="ap-chip {{ 'ativo' if sit == 'hoje' }}" href="{{ url_for('notas.dashboard', situacao='hoje') }}"><i class="fa-solid fa-bell"></i> Vencem hoje</a>
+  <a class="ap-chip {{ 'ativo' if sit == '7dias' }}" href="{{ url_for('notas.dashboard', situacao='7dias') }}">Próximos 7 dias</a>
+  <a class="ap-chip {{ 'ativo' if sit == '30dias' }}" href="{{ url_for('notas.dashboard', situacao='30dias') }}">Próximos 30 dias</a>
+  <a class="ap-chip {{ 'ativo' if sit == 'pagas' }}" href="{{ url_for('notas.dashboard', situacao='pagas') }}"><i class="fa-solid fa-circle-check"></i> Pagas / recebidas</a>
+</div>
 
 <div class="card mb-4">
   <div class="card-body p-3">
     <form method="get">
+      {% if sit %}<input type="hidden" name="situacao" value="{{ sit }}">{% endif %}
       <div class="row g-2 align-items-end">
         <div class="col-6 col-md-2">
           <label class="form-label small">Emissão De</label>
@@ -108,9 +122,9 @@
         </div>
         <div class="col-6 col-md-3 mt-2 d-flex gap-1 justify-content-end flex-wrap">
           {% if current_user.is_admin %}
-          <a href="{{ url_for('notas.disparar_alertas') }}" class="btn btn-outline-warning btn-sm" title="Disparar Alerta por E-mail de Contas que Vencem Hoje e Atrasadas" onclick="return confirm('Deseja enviar o e-mail de alerta de vencimento para os administradores?');">
+          <button type="submit" form="formAlertas" class="btn btn-outline-warning btn-sm" title="Enviar agora o resumo de vencimentos por e-mail" onclick="return confirm('Enviar agora o resumo de vencimentos por e-mail?');">
             <i class="fa-solid fa-paper-plane me-1"></i> Alertas
-          </a>
+          </button>
           {% endif %}
           <a href="{{ url_for('notas.exportar_excel', **filtros) }}" class="btn btn-outline-success btn-sm" title="Baixar relatório em Excel com filtros aplicados">
             <i class="fa-solid fa-file-excel me-1"></i> Excel
@@ -127,6 +141,12 @@
   </div>
 </div>
 
+
+{% if current_user.is_admin %}
+<form id="formAlertas" method="post" action="{{ url_for('notas.disparar_alertas') }}" class="d-none">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
+{% endif %}
 
 {# --- CARDS DE RESUMO FINANCEIRO CORPORATIVO --- #}
 <div class="row mb-4 g-2">
@@ -263,7 +283,7 @@
     <thead>
       <tr>
         <th>Vencimento</th>
-        <th>Emissão</th>
+        <th class="d-none d-xxl-table-cell">Emissão</th>
         <th>Fluxo</th>
         <th>Status</th>
         <th>Categoria</th>
@@ -282,11 +302,12 @@
             <span class="{% if n.is_atrasada %}fw-bold text-danger{% endif %}">
               {{ n.data_vencimento.strftime('%d/%m/%Y') }}
             </span>
+            {% if n.em_aberto %}<div class="mt-1">{{ prazo(n.dias_para_vencer) }}</div>{% endif %}
           {% else %}
             —
           {% endif %}
         </td>
-        <td class="text-muted small">{{ n.data_emissao.strftime('%d/%m/%Y') }}</td>
+        <td class="text-muted small d-none d-xxl-table-cell">{{ n.data_emissao.strftime('%d/%m/%Y') }}</td>
         <td>
           <span class="badge bg-{{ 'success' if n.tipo == 'entrada' else 'danger' }}">
             {{ 'A Receber' if n.tipo == 'entrada' else 'A Pagar' }}
@@ -308,7 +329,7 @@
         <td>
           <span class="badge bg-dark border border-secondary text-light">{{ n.categoria }}</span>
         </td>
-        <td><strong>{{ n.cliente_fornecedor or '—' }}</strong></td>
+        <td><a href="{{ url_for('painel.detalhe', nota_id=n.id) }}" style="color:#fff; text-decoration:none;"><strong>{{ n.cliente_fornecedor or '—' }}</strong></a></td>
         <td class="small">{{ n.numero_nota or '—' }}</td>
         <td class="text-end fw-bold">
           {{ n.valor|brl }}
@@ -319,8 +340,7 @@
 
         <td class="small text-muted"><i class="fa-solid fa-user-circle me-1"></i>{{ n.enviado_por.nome }}</td>
         <td class="text-end">
-          <a href="{{ url_for('notas.gerar_recibo_pdf', nota_id=n.id) }}" class="btn btn-sm btn-outline-info" target="_blank" title="Imprimir / Baixar Recibo PDF"><i class="fa-solid fa-print"></i></a>
-          <a href="{{ url_for('notas.baixar_arquivo', nota_id=n.id) }}" class="btn btn-sm btn-outline-secondary" target="_blank" title="Ver Nota/Documento Original"><i class="fa-solid fa-file-pdf"></i></a>
+          <a href="{{ url_for('painel.detalhe', nota_id=n.id) }}" class="btn btn-sm btn-outline-success" title="Ver detalhes e dar baixa"><i class="fa-solid fa-eye"></i></a>
           {% if n.comprovante_nome %}
           <a href="{{ url_for('notas.baixar_comprovante', nota_id=n.id) }}" class="btn btn-sm btn-outline-success" target="_blank" title="Ver Comprovante de Pagamento PIX/Bancário"><i class="fa-solid fa-receipt"></i></a>
           {% endif %}
@@ -341,7 +361,7 @@
   <div class="card mb-2 {% if n.is_atrasada %}border-danger border-2{% endif %}">
     <div class="card-body py-2">
       <div class="d-flex justify-content-between align-items-start">
-        <strong>{{ n.cliente_fornecedor or "—" }}</strong>
+        <a href="{{ url_for('painel.detalhe', nota_id=n.id) }}" style="color:#fff; text-decoration:none;"><strong>{{ n.cliente_fornecedor or "—" }}</strong></a>
         <div class="d-flex gap-1 flex-wrap justify-content-end">
           {% if n.is_atrasada %}
             <span class="badge bg-danger"><i class="fa-solid fa-triangle-exclamation"></i> ATRASADA</span>
@@ -363,8 +383,9 @@
       </div>
       <div class="small text-muted" style="font-size:0.78rem;">Cadastrado por {{ n.enviado_por.nome }}</div>
       <div class="mt-2 d-flex gap-1 flex-wrap">
+        <a href="{{ url_for('painel.detalhe', nota_id=n.id) }}" class="btn btn-sm btn-outline-success flex-fill text-center"><i class="fa-solid fa-eye"></i> Detalhes</a>
         <a href="{{ url_for('notas.gerar_recibo_pdf', nota_id=n.id) }}" class="btn btn-sm btn-outline-info flex-fill text-center" target="_blank"><i class="fa-solid fa-print"></i> Recibo</a>
-        <a href="{{ url_for('notas.baixar_arquivo', nota_id=n.id) }}" class="btn btn-sm btn-outline-secondary flex-fill text-center" target="_blank"><i class="fa-solid fa-file-pdf"></i> Nota</a>
+        {% if n.tem_arquivo %}<a href="{{ url_for('notas.baixar_arquivo', nota_id=n.id) }}" class="btn btn-sm btn-outline-secondary flex-fill text-center" target="_blank"><i class="fa-solid fa-file-pdf"></i> Nota</a>{% endif %}
         {% if n.comprovante_nome %}
         <a href="{{ url_for('notas.baixar_comprovante', nota_id=n.id) }}" class="btn btn-sm btn-outline-success flex-fill text-center" target="_blank"><i class="fa-solid fa-receipt"></i> PIX</a>
         {% endif %}

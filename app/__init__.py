@@ -33,8 +33,17 @@ def create_app():
     from .notas import notas_bp
     from .setup import setup_bp  # primeiro admin: só com a variável SETUP_TOKEN definida
 
+    from .painel import painel_bp
+    from .documentos import documentos_bp
+    from .alertas import alertas_bp, iniciar_agendador
+    from .arquivos import arquivos_bp
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(notas_bp)
+    app.register_blueprint(painel_bp)
+    app.register_blueprint(documentos_bp)
+    app.register_blueprint(alertas_bp)
+    app.register_blueprint(arquivos_bp)
     app.register_blueprint(setup_bp)
 
     with app.app_context():
@@ -42,6 +51,9 @@ def create_app():
         _migrar_colunas(db)
         _inicializar_categorias(app, db)
         _garantir_admin_do_ambiente(db)
+        _mover_arquivos_com_trava(app, db)
+
+    iniciar_agendador(app)
 
     register_cli(app)
 
@@ -72,6 +84,17 @@ def create_app():
             "ano_atual": date.today().year,
         }
 
+    @app.template_filter("sp")
+    def hora_sp(valor, formato="%d/%m/%Y %H:%M"):
+        """Data/hora gravada em UTC mostrada no horário de Brasília."""
+        if not valor:
+            return "—"
+        from datetime import timezone
+        from .util import FUSO
+        if valor.tzinfo is None:
+            valor = valor.replace(tzinfo=timezone.utc)
+        return valor.astimezone(FUSO).strftime(formato)
+
     @app.template_filter("brl")
     def formatar_brl(valor):
         """Valor em reais no formato brasileiro: R$ 48.320,90 (negativo: -R$ 1.234,00)."""
@@ -84,6 +107,26 @@ def create_app():
 
     return app
 
+
+
+def _mover_arquivos_com_trava(app, db):
+    """Copia para o banco os arquivos que estão no disco. Com vários processos do gunicorn,
+    a trava do PostgreSQL (presa a uma conexão própria) deixa só um fazer a cópia."""
+    from sqlalchemy import text
+    from .arquivos import mover_arquivos_do_disco_para_banco
+    if db.engine.dialect.name != "postgresql":
+        mover_arquivos_do_disco_para_banco(app)
+        return
+    try:
+        with db.engine.connect() as conn:
+            if not conn.execute(text("SELECT pg_try_advisory_lock(918273)")).scalar():
+                return
+            try:
+                mover_arquivos_do_disco_para_banco(app)
+            finally:
+                conn.execute(text("SELECT pg_advisory_unlock(918273)"))
+    except Exception as exc:
+        app.logger.warning("Cópia dos arquivos para o banco não executada: %s", exc)
 
 
 def _garantir_admin_do_ambiente(db):
@@ -151,6 +194,9 @@ def _migrar_colunas(db):
         ("comprovante_nome_original", "ALTER TABLE nota ADD COLUMN comprovante_nome_original VARCHAR(255)"),
         ("status", "ALTER TABLE nota ADD COLUMN status VARCHAR(20) DEFAULT 'Pendente'"),
         ("valor_pago", "ALTER TABLE nota ADD COLUMN valor_pago NUMERIC(12,2) DEFAULT 0"),
+        ("arquivo_id", "ALTER TABLE nota ADD COLUMN arquivo_id INTEGER"),
+        ("comprovante_id", "ALTER TABLE nota ADD COLUMN comprovante_id INTEGER"),
+        ("grupo_recorrencia", "ALTER TABLE nota ADD COLUMN grupo_recorrencia VARCHAR(32)"),
     ]
 
     for col_nome, sql_cmd in novas_colunas_nota:
@@ -160,6 +206,14 @@ def _migrar_colunas(db):
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+
+    try:
+        colunas_log = [c["name"] for c in inspector.get_columns("log_auditoria")]
+        if colunas_log and "referencia" not in colunas_log:
+            db.session.execute(text("ALTER TABLE log_auditoria ADD COLUMN referencia VARCHAR(40)"))
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
 
     try:
         colunas_user = [c["name"] for c in inspector.get_columns("user")]

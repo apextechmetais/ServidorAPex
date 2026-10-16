@@ -17,19 +17,23 @@
 
       <div class="row g-3 mb-3">
         <div class="col-12 col-md-6">
-          <label class="form-label">Arquivo Principal Atual</label>
+          <label class="form-label">Boleto / nota / documento</label>
           <div>
+            {% if nota.tem_arquivo %}
             <a href="{{ url_for('notas.baixar_arquivo', nota_id=nota.id) }}" target="_blank" class="btn btn-sm btn-outline-secondary mb-2">
-              <i class="fa-solid fa-file-pdf me-1"></i> {{ nota.arquivo_nome_original }}
+              <i class="fa-solid fa-file-pdf me-1"></i> {{ nota.arquivo_nome_original or 'Ver arquivo' }}
             </a>
+            {% else %}
+            <span class="badge bg-secondary mb-2">Nenhum arquivo anexado</span>
+            {% endif %}
           </div>
-          <label class="form-label small">Substituir Arquivo Principal (Opcional)</label>
-          <input type="file" name="arquivo" class="form-control" accept=".pdf,image/*" capture="environment">
+          <label class="form-label small">{{ 'Substituir arquivo (opcional)' if nota.tem_arquivo else 'Anexar arquivo (opcional)' }}</label>
+          <input type="file" name="arquivo" class="form-control" accept=".pdf,image/*,.doc,.docx,.xls,.xlsx">
         </div>
         <div class="col-12 col-md-6">
           <label class="form-label">Comprovante de Pagamento / PIX</label>
           <div>
-            {% if nota.comprovante_nome %}
+            {% if nota.tem_comprovante %}
             <a href="{{ url_for('notas.baixar_comprovante', nota_id=nota.id) }}" target="_blank" class="btn btn-sm btn-outline-success mb-2">
               <i class="fa-solid fa-receipt me-1"></i> {{ nota.comprovante_nome_original or 'Ver Comprovante' }}
             </a>

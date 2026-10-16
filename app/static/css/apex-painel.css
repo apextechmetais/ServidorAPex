@@ -241,3 +241,61 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); curso
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+/* ───────── Componentes da gestão de contas ───────── */
+.ap-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.ap-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--ap-linha-forte); color: var(--ap-texto-2); background: transparent;
+    font-weight: 600; font-size: 0.85rem; text-decoration: none; transition: background-color 0.15s var(--ap-suave), color 0.15s var(--ap-suave);
+}
+.ap-chip:hover { background: var(--ap-superficie-2); color: #fff; }
+.ap-chip.ativo { background: var(--ap-verde); border-color: var(--ap-verde); color: var(--ap-base); }
+
+.ap-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.ap-kpi-card {
+    display: block; text-decoration: none; color: var(--ap-texto);
+    background: var(--ap-superficie); border: 1px solid var(--ap-linha); border-left: 4px solid var(--cor, var(--ap-verde));
+    border-radius: 12px; padding: 14px 16px; transition: translate 0.2s var(--ap-suave), border-color 0.2s var(--ap-suave);
+}
+a.ap-kpi-card:hover { translate: 0 -2px; border-color: var(--ap-linha-forte); border-left-color: var(--cor, var(--ap-verde)); color: var(--ap-texto); }
+.ap-kpi-card .rotulo { font-size: 0.74rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--ap-texto-2); }
+.ap-kpi-card .rotulo i { color: var(--cor, var(--ap-verde)); margin-right: 4px; }
+.ap-kpi-card .valor { font-size: 1.45rem; font-weight: 750; margin: 6px 0 2px; color: #fff; }
+.ap-kpi-card .sub { font-size: 0.8rem; color: var(--ap-texto-2); }
+
+.ap-grade-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; margin-bottom: 18px; }
+@media (max-width: 600px) { .ap-grade-2 { grid-template-columns: 1fr; } }
+.ap-bloco { background: var(--ap-superficie); border: 1px solid var(--ap-linha); border-radius: 12px; padding: 18px 20px; }
+.ap-bloco__topo { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+.ap-bloco__topo h2 { font-size: 1.05rem; font-weight: 650; margin: 0; }
+.ap-bloco__topo h2 i { color: var(--ap-verde); margin-right: 6px; }
+.ap-bloco__topo a { font-size: 0.85rem; text-decoration: none; }
+
+.ap-lista { list-style: none; margin: 0; padding: 0; }
+.ap-lista li { display: flex; align-items: center; gap: 12px; padding: 11px 2px; border-bottom: 1px solid var(--ap-linha); }
+.ap-lista li:last-child { border-bottom: 0; }
+.ap-lista .titulo { color: #fff; font-weight: 600; text-decoration: none; }
+.ap-lista .titulo:hover { color: var(--ap-verde); }
+.ap-lista .meta { font-size: 0.8rem; color: var(--ap-texto-2); }
+.ap-lista .valor { margin-left: auto; font-weight: 700; white-space: nowrap; text-align: right; }
+.ap-vazio { color: var(--ap-texto-2); padding: 18px 2px; font-size: 0.92rem; }
+.ap-vazio i { color: var(--ap-verde); margin-right: 6px; }
+
+.ap-prazo { display: inline-block; min-width: 84px; text-align: center; font-size: 0.74rem; font-weight: 700; border-radius: 999px; padding: 4px 8px; border: 1px solid; white-space: nowrap; }
+.ap-prazo.atrasada { color: var(--ap-vermelho); border-color: rgba(255, 107, 107, 0.45); background: rgba(255, 107, 107, 0.1); }
+.ap-prazo.hoje { color: var(--ap-amarelo); border-color: rgba(255, 204, 0, 0.45); background: rgba(255, 204, 0, 0.1); }
+.ap-prazo.breve { color: #fb923c; border-color: rgba(251, 146, 60, 0.45); background: rgba(251, 146, 60, 0.1); }
+.ap-prazo.ok { color: var(--ap-verde); border-color: rgba(37, 208, 127, 0.4); background: rgba(37, 208, 127, 0.08); }
+.ap-prazo.neutro { color: var(--ap-texto-2); border-color: var(--ap-linha-forte); background: transparent; }
+
+.ap-dados { display: grid; grid-template-columns: minmax(140px, 200px) 1fr; gap: 10px 18px; margin: 0; }
+.ap-dados dt { color: var(--ap-texto-2); font-weight: 500; }
+.ap-dados dd { margin: 0; color: #fff; }
+.ap-barra { height: 8px; border-radius: 999px; background: var(--ap-superficie-2); overflow: hidden; margin: 8px 0 4px; }
+.ap-barra span { display: block; height: 100%; background: var(--ap-verde); border-radius: 999px; }
+.ap-arquivo { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--ap-linha); border-radius: 10px; margin-bottom: 8px; }
+.ap-arquivo i.fa-file-lines, .ap-arquivo i.fa-file-pdf, .ap-arquivo i.fa-file-image { color: var(--ap-verde); font-size: 1.2rem; }
+.ap-arquivo .nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (min-width: 1100px) { .ap-kpis--3 { grid-template-columns: repeat(3, 1fr); } }

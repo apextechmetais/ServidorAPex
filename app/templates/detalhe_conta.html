@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% from "_macros.html" import prazo, status, icone_arquivo %}
+{% block title %}{{ nota.cliente_fornecedor or 'Conta' }}{% endblock %}
+{% block content %}
+{% set pago = nota.valor_pago or 0 %}
+{% set pct = ((pago / nota.valor * 100) if nota.valor and nota.valor > 0 else 0)|float %}
+<header class="ap-cabecalho">
+  <div>
+    <h1><i class="fa-solid fa-file-invoice-dollar"></i> {{ nota.cliente_fornecedor or nota.categoria or 'Conta' }}</h1>
+    <p>{{ 'Conta a receber' if nota.tipo == 'entrada' else 'Conta a pagar' }} · {{ nota.categoria or 'Sem categoria' }}{% if nota.numero_nota %} · Nº {{ nota.numero_nota }}{% endif %}</p>
+  </div>
+  <div class="ap-cabecalho__acoes">
+    <a href="{{ url_for('notas.dashboard') }}" class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-left me-1"></i> Voltar</a>
+    <a href="{{ url_for('notas.gerar_recibo_pdf', nota_id=nota.id) }}" target="_blank" class="btn btn-outline-secondary"><i class="fa-solid fa-print me-1"></i> Recibo</a>
+    {% if nota.pode_editar(current_user) %}
+    <a href="{{ url_for('notas.editar', nota_id=nota.id) }}" class="btn btn-outline-secondary"><i class="fa-solid fa-pen me-1"></i> Editar</a>
+    {% endif %}
+  </div>
+</header>
+
+<div class="ap-kpis">
+  <div class="ap-kpi-card" style="--cor:#94a3b8;">
+    <div class="rotulo"><i class="fa-solid fa-receipt"></i> Valor da conta</div>
+    <div class="valor">{{ nota.valor|brl }}</div>
+    <div class="sub">Emitida em {{ nota.data_emissao.strftime('%d/%m/%Y') }}</div>
+  </div>
+  <div class="ap-kpi-card" style="--cor:#25D07F;">
+    <div class="rotulo"><i class="fa-solid fa-circle-check"></i> {{ 'Recebido' if nota.tipo == 'entrada' else 'Pago' }}</div>
+    <div class="valor">{{ pago|brl }}</div>
+    <div class="ap-barra"><span style="width: {{ [pct, 100]|min }}%;"></span></div>
+    <div class="sub">{{ '%.0f'|format(pct) }}% quitado{% if nota.data_pagamento %} · última baixa {{ nota.data_pagamento.strftime('%d/%m/%Y') }}{% endif %}</div>
+  </div>
+  <div class="ap-kpi-card" style="--cor:{{ '#ff6b6b' if nota.is_atrasada else '#fb923c' }};">
+    <div class="rotulo"><i class="fa-solid fa-hourglass-half"></i> Falta {{ 'receber' if nota.tipo == 'entrada' else 'pagar' }}</div>
+    <div class="valor">{{ nota.saldo_restante|brl }}</div>
+    <div class="sub">{{ status(nota) }}</div>
+  </div>
+  <div class="ap-kpi-card" style="--cor:#38bdf8;">
+    <div class="rotulo"><i class="fa-solid fa-calendar"></i> Vencimento</div>
+    <div class="valor">{{ nota.data_vencimento.strftime('%d/%m/%Y') if nota.data_vencimento else '—' }}</div>
+    <div class="sub">{% if nota.em_aberto %}{{ prazo(nota.dias_para_vencer) }}{% else %}Quitada{% endif %}</div>
+  </div>
+</div>
+
+<div class="ap-grade-2">
+  <section class="ap-bloco">
+    <div class="ap-bloco__topo"><h2><i class="fa-solid fa-circle-info"></i> Dados da cobrança</h2></div>
+    <dl class="ap-dados">
+      <dt>Fluxo</dt><dd>{{ 'Entrada (a receber)' if nota.tipo == 'entrada' else 'Saída (a pagar)' }}</dd>
+      <dt>{{ 'Cliente' if nota.tipo == 'entrada' else 'Fornecedor' }}</dt><dd>{{ nota.cliente_fornecedor or '—' }}</dd>
+      <dt>Categoria</dt><dd>{{ nota.categoria or '—' }}</dd>
+      <dt>Tipo de documento</dt><dd>{{ nota.tipo_documento or '—' }}</dd>
+      <dt>Número</dt><dd>{{ nota.numero_nota or '—' }}</dd>
+      <dt>Emissão</dt><dd>{{ nota.data_emissao.strftime('%d/%m/%Y') }}</dd>
+      <dt>Vencimento</dt><dd>{{ nota.data_vencimento.strftime('%d/%m/%Y') if nota.data_vencimento else '—' }}</dd>
+      <dt>Cadastrado por</dt><dd>{{ nota.enviado_por.nome }} em {{ nota.criado_em.strftime('%d/%m/%Y') if nota.criado_em else '—' }}</dd>
+      <dt>Observações</dt><dd style="white-space:pre-wrap;">{{ nota.descricao or '—' }}</dd>
+    </dl>
+  </section>
+
+  <section class="ap-bloco">
+    <div class="ap-bloco__topo"><h2><i class="fa-solid fa-paperclip"></i> Arquivos</h2></div>
+    {% if nota.tem_arquivo %}
+    <div class="ap-arquivo">
+      <i class="fa-solid {{ icone_arquivo(nota.arquivo_nome_original) }}"></i>
+      <span class="nome" title="{{ nota.arquivo_nome_original }}"><strong>Documento:</strong> {{ nota.arquivo_nome_original or 'arquivo' }}</span>
+      <a href="{{ url_for('notas.baixar_arquivo', nota_id=nota.id) }}" target="_blank" class="btn btn-sm btn-outline-secondary">Abrir</a>
+    </div>
+    {% endif %}
+    {% if nota.tem_comprovante %}
+    <div class="ap-arquivo">
+      <i class="fa-solid {{ icone_arquivo(nota.comprovante_nome_original) }}"></i>
+      <span class="nome" title="{{ nota.comprovante_nome_original }}"><strong>Comprovante:</strong> {{ nota.comprovante_nome_original or 'comprovante' }}</span>
+      <a href="{{ url_for('notas.baixar_comprovante', nota_id=nota.id) }}" target="_blank" class="btn btn-sm btn-outline-secondary">Abrir</a>
+    </div>
+    {% endif %}
+    {% for p in nota.pagamentos if p.comprovante_id and p.comprovante_id != nota.comprovante_id %}
+    <div class="ap-arquivo">
+      <i class="fa-solid fa-file-lines"></i>
+      <span class="nome"><strong>Comprovante da baixa de {{ p.data.strftime('%d/%m/%Y') }}</strong></span>
+      <a href="{{ url_for('arquivos.abrir', arquivo_id=p.comprovante_id) }}" target="_blank" class="btn btn-sm btn-outline-secondary">Abrir</a>
+    </div>
+    {% endfor %}
+    {% if not nota.tem_arquivo and not nota.tem_comprovante %}
+    <p class="ap-vazio"><i class="fa-solid fa-circle-info"></i>Nenhum arquivo anexado. {% if nota.pode_editar(current_user) %}<a href="{{ url_for('notas.editar', nota_id=nota.id) }}">Anexar boleto ou nota</a>.{% endif %}</p>
+    {% endif %}
+  </section>
+</div>
+
+<div class="ap-grade-2">
+  <section class="ap-bloco">
+    <div class="ap-bloco__topo"><h2><i class="fa-solid fa-money-check-dollar"></i> Baixas registradas</h2></div>
+    {% if nota.pagamentos %}
+    <ul class="ap-lista">
+      {% for p in nota.pagamentos %}
+      <li>
+        <span class="ap-prazo ok">{{ p.data.strftime('%d/%m/%Y') }}</span>
+        <div style="min-width:0;">
+          <span class="titulo">{{ p.forma or 'Pagamento' }}</span>
+          <div class="meta">{{ p.observacao or '' }}{% if p.registrado_por %} · por {{ p.registrado_por.nome }}{% endif %}</div>
+        </div>
+        <div class="valor">{{ p.valor|brl }}</div>
+        {% if nota.pode_editar(current_user) %}
+        <form method="post" action="{{ url_for('painel.excluir_pagamento', nota_id=nota.id, pag_id=p.id) }}" class="m-0" onsubmit="return confirm('Remover esta baixa?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover baixa"><i class="fa-solid fa-trash"></i></button>
+        </form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% elif nota.status in ('Pago', 'Recebido') %}
+    <p class="ap-vazio"><i class="fa-solid fa-circle-check"></i>Marcada como {{ nota.status|lower }}{% if nota.data_pagamento %} em {{ nota.data_pagamento.strftime('%d/%m/%Y') }}{% endif %} (cadastro anterior às baixas detalhadas).</p>
+    {% elif (nota.valor_pago or 0) > 0 %}
+    <p class="ap-vazio"><i class="fa-solid fa-circle-info"></i>{{ nota.valor_pago|brl }} já constavam como {{ 'recebidos' if nota.tipo == 'entrada' else 'pagos' }}{% if nota.data_pagamento %} em {{ nota.data_pagamento.strftime('%d/%m/%Y') }}{% endif %} (cadastro anterior às baixas detalhadas). As próximas baixas aparecem aqui.</p>
+    {% else %}
+    <p class="ap-vazio"><i class="fa-solid fa-circle-info"></i>Nenhuma baixa registrada ainda.</p>
+    {% endif %}
+  </section>
+
+  {% if nota.pode_editar(current_user) and nota.em_aberto %}
+  <section class="ap-bloco">
+    <div class="ap-bloco__topo"><h2><i class="fa-solid fa-circle-dollar-to-slot"></i> Dar baixa</h2></div>
+    <form method="post" action="{{ url_for('painel.registrar_pagamento', nota_id=nota.id) }}" enctype="multipart/form-data" class="row g-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="col-6">
+        <label class="form-label">Valor {{ 'recebido' if nota.tipo == 'entrada' else 'pago' }} (R$)</label>
+        <input type="text" name="valor" class="form-control" required value="{{ '%.2f'|format(nota.saldo_restante)|replace('.', ',') }}">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Data</label>
+        <input type="date" name="data" class="form-control" required value="{{ hoje.isoformat() }}">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Forma</label>
+        <select name="forma" class="form-select">
+          {% for f in formas %}<option value="{{ f }}">{{ f }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6">
+        <label class="form-label">Comprovante (opcional)</label>
+        <input type="file" name="comprovante" class="form-control" accept=".pdf,image/*">
+      </div>
+      <div class="col-12">
+        <label class="form-label">Observação</label>
+        <input type="text" name="observacao" class="form-control" placeholder="Ex.: pago pela conta do Itaú">
+      </div>
+      <div class="col-12">
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check me-1"></i> Registrar baixa</button>
+        <span class="ms-2" style="color:var(--ap-texto-2); font-size:0.85rem;">Valor menor que o saldo fica como pagamento parcial.</span>
+      </div>
+    </form>
+  </section>
+  {% endif %}
+</div>
+
+{% if recorrentes|length > 1 %}
+<section class="ap-bloco mb-3">
+  <div class="ap-bloco__topo"><h2><i class="fa-solid fa-repeat"></i> Mesma conta nos outros meses</h2></div>
+  <ul class="ap-lista">
+    {% for r in recorrentes %}
+    <li>
+      {% if r.em_aberto %}{{ prazo(r.dias_para_vencer) }}{% else %}<span class="ap-prazo ok">Quitada</span>{% endif %}
+      <div><a class="titulo" href="{{ url_for('painel.detalhe', nota_id=r.id) }}">Vencimento {{ r.data_vencimento.strftime('%d/%m/%Y') if r.data_vencimento else '—' }}</a>{% if r.id == nota.id %} <span class="meta">(esta)</span>{% endif %}</div>
+      <div class="valor">{{ r.valor|brl }}</div>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="ap-bloco">
+  <div class="ap-bloco__topo"><h2><i class="fa-solid fa-clock-rotate-left"></i> Histórico</h2></div>
+  {% if historico %}
+  <ul class="ap-lista">
+    {% for h in historico %}
+    <li>
+      <span class="ap-prazo neutro">{{ h.criado_em|sp }}</span>
+      <div style="min-width:0;"><span class="titulo">{{ h.acao }}</span><div class="meta">{{ h.usuario_nome }} · {{ h.detalhes or '' }}</div></div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="ap-vazio"><i class="fa-solid fa-circle-info"></i>Sem registros ainda (o histórico começa a partir desta versão).</p>
+  {% endif %}
+</section>
+{% endblock %}
