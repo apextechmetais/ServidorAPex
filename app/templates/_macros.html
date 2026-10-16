@@ -34,3 +34,22 @@
   {%- set ext = (nome or '').rsplit('.', 1)[-1].lower() -%}
   {%- if ext == 'pdf' -%}fa-file-pdf{%- elif ext in ('jpg', 'jpeg', 'png', 'webp', 'heic', 'gif') -%}fa-file-image{%- elif ext in ('xls', 'xlsx', 'ods', 'csv') -%}fa-file-excel{%- elif ext in ('doc', 'docx', 'odt') -%}fa-file-word{%- elif ext == 'zip' -%}fa-file-zipper{%- else -%}fa-file-lines{%- endif -%}
 {%- endmacro %}
+
+{# Selo de prioridade (só destaca Crítica e Alta; Normal/Baixa ficam discretas) #}
+{% macro prioridade(n, sempre=false) -%}
+  {%- set p = n.prioridade or 2 -%}
+  {%- if p == 4 -%}<span class="ap-prio ap-prio--4" title="Prioridade crítica"><i class="fa-solid fa-fire"></i> Crítica</span>
+  {%- elif p == 3 -%}<span class="ap-prio ap-prio--3" title="Prioridade alta"><i class="fa-solid fa-arrow-up"></i> Alta</span>
+  {%- elif sempre -%}<span class="ap-prio ap-prio--{{ p }}">{{ 'Normal' if p == 2 else 'Baixa' }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{# Campo de prioridade dos formulários #}
+{% macro campo_prioridade(valor=2) -%}
+  <select name="prioridade" class="form-select">
+    <option value="4" {{ 'selected' if valor == 4 }}>Crítica — não pode atrasar (impostos, folha, energia)</option>
+    <option value="3" {{ 'selected' if valor == 3 }}>Alta</option>
+    <option value="2" {{ 'selected' if valor == 2 or not valor }}>Normal</option>
+    <option value="1" {{ 'selected' if valor == 1 }}>Baixa</option>
+  </select>
+{%- endmacro %}

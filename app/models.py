@@ -56,6 +56,10 @@ class Nota(db.Model):
     comprovante_id = db.Column(db.Integer, db.ForeignKey("arquivo.id"), nullable=True)
     # Contas repetidas todo mês compartilham o mesmo grupo
     grupo_recorrencia = db.Column(db.String(32), nullable=True)
+    # 4 = Crítica, 3 = Alta, 2 = Normal, 1 = Baixa
+    prioridade = db.Column(db.Integer, nullable=False, default=2)
+    # Quitada mesmo com valor pago menor (desconto, acordo): continua "Paga" ao recalcular
+    quitada = db.Column(db.Boolean, nullable=False, default=False)
 
     enviado_por_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     enviado_por = db.relationship("User", backref="notas")
@@ -87,6 +91,44 @@ class Nota(db.Model):
         if not self.em_aberto or not self.data_vencimento:
             return None
         return (self.data_vencimento - hoje_sp()).days
+
+    PRIORIDADES = {4: "Crítica", 3: "Alta", 2: "Normal", 1: "Baixa"}
+
+    @property
+    def prioridade_nome(self):
+        return self.PRIORIDADES.get(self.prioridade or 2, "Normal")
+
+    @property
+    def atencao(self):
+        """Pontuação para ordenar o que precisa de atenção primeiro (0 = nada a fazer).
+        Prioridade pesa mais; depois, atraso e proximidade do vencimento."""
+        if not self.em_aberto:
+            return 0
+        pontos = (self.prioridade or 2) * 25
+        dias = self.dias_para_vencer
+        if dias is None:
+            return pontos
+        if dias < 0:
+            pontos += 40 + min(-dias, 30)
+        elif dias == 0:
+            pontos += 35
+        elif dias <= 3:
+            pontos += 25
+        elif dias <= 7:
+            pontos += 15
+        elif dias <= 15:
+            pontos += 5
+        return pontos
+
+    @property
+    def motivo_atencao(self):
+        dias = self.dias_para_vencer
+        partes = []
+        if (self.prioridade or 2) >= 3:
+            partes.append("Prioridade " + self.prioridade_nome.lower())
+        if dias is not None:
+            partes.append(f"{-dias} dia(s) atrasada" if dias < 0 else ("vence hoje" if dias == 0 else f"vence em {dias} dia(s)"))
+        return " · ".join(partes)
 
     @property
     def tem_arquivo(self):

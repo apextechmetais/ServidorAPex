@@ -53,6 +53,14 @@ def salvar_arquivo(arquivo):
     return nome_salvo
 
 
+def _prioridade_do_form(padrao=2):
+    try:
+        valor = int(request.form.get("prioridade", padrao))
+        return valor if valor in (1, 2, 3, 4) else padrao
+    except (TypeError, ValueError):
+        return padrao
+
+
 def parse_data(valor_str, padrao=None):
     try:
         return datetime.strptime(valor_str, "%Y-%m-%d").date()
@@ -84,6 +92,7 @@ def dashboard():
     status_filtro = request.args.get("status", "")
     cliente = request.args.get("cliente", "").strip()
     cadastrado_por = request.args.get("cadastrado_por", "")
+    prioridade = request.args.get("prioridade", "")
     somente_atrasadas = request.args.get("somente_atrasadas", "")
     busca = request.args.get("busca", "").strip()
     situacao = request.args.get("situacao", "")
@@ -105,6 +114,8 @@ def dashboard():
         query = query.filter(aberto, Nota.data_vencimento >= hoje, Nota.data_vencimento <= hoje + timedelta(days=30))
     elif situacao == "pagas":
         query = query.filter(Nota.status.in_(("Pago", "Recebido")))
+    elif situacao == "prioritarias":
+        query = query.filter(aberto, Nota.prioridade >= 3)
 
     if data_inicio:
         d = parse_data(data_inicio)
@@ -132,6 +143,8 @@ def dashboard():
         query = query.filter(Nota.status == status_filtro)
     if cadastrado_por and cadastrado_por.isdigit():
         query = query.filter(Nota.enviado_por_id == int(cadastrado_por))
+    if prioridade.isdigit():
+        query = query.filter(Nota.prioridade == int(prioridade))
     if somente_atrasadas == "1":
         query = query.filter(aberto, Nota.data_vencimento < hoje)
     if cliente:
@@ -146,7 +159,14 @@ def dashboard():
             )
         )
 
+    ordem = request.args.get("ordem", "vencimento")
     notas = query.order_by(Nota.data_vencimento.asc().nullslast(), Nota.data_emissao.desc(), Nota.id.desc()).all()
+    if ordem == "atencao":
+        notas.sort(key=lambda n: -n.atencao)
+    elif ordem == "prioridade":
+        notas.sort(key=lambda n: -(n.prioridade or 2))  # estável: mantém vencimento dentro da prioridade
+    elif ordem == "valor":
+        notas.sort(key=lambda n: -(n.valor or 0))
 
     # Cálculos para resumo financeiro detalhado
     def efetivado(n):
@@ -251,9 +271,18 @@ def upload():
             arquivo_id=arq.id if arq else None,
             comprovante_id=comp.id if comp else None,
             comprovante_nome_original=comp.nome_original if comp else None,
+            prioridade=_prioridade_do_form(),
             enviado_por_id=current_user.id,
         )
         db.session.add(nota)
+        db.session.flush()
+
+        # Comprovante anexado + "já está paga": registra o pagamento e conta como paga
+        if comp and request.form.get("ja_paga") == "1":
+            from .painel import quitar_conta
+            nota.status, nota.valor_pago = "Pendente", Decimal("0")
+            quitar_conta(nota, data_pagamento or hoje_sp(), forma=request.form.get("forma_pagamento") or None,
+                         comprovante_id=comp.id, observacao="Pago no cadastro", usuario_id=current_user.id)
 
         # Repetir todo mês: cria as próximas cobranças (sem anexo, em aberto)
         repeticoes = 0
@@ -271,7 +300,7 @@ def upload():
                     valor_pago=Decimal("0"), data_emissao=somar_meses(nota.data_emissao, i),
                     data_vencimento=somar_meses(nota.data_vencimento, i) if nota.data_vencimento else None,
                     status="Pendente", descricao=nota.descricao, arquivo_nome="", arquivo_nome_original="",
-                    grupo_recorrencia=nota.grupo_recorrencia, enviado_por_id=current_user.id,
+                    grupo_recorrencia=nota.grupo_recorrencia, prioridade=nota.prioridade, enviado_por_id=current_user.id,
                 ))
         db.session.commit()
 
@@ -313,6 +342,7 @@ def editar(nota_id):
             nota.status = "Parcial"
 
         nota.descricao = request.form.get("descricao", "").strip()
+        nota.prioridade = _prioridade_do_form(nota.prioridade)
 
 
         try:
@@ -332,6 +362,11 @@ def editar(nota_id):
             db.session.flush()
             if antigo and not any(p.comprovante_id == antigo for p in nota.pagamentos):
                 excluir_arquivo(antigo)
+            # Comprovante novo + "marcar como paga": registra o pagamento do saldo
+            if request.form.get("ja_paga") == "1" and nota.status in ("Pendente", "Parcial"):
+                from .painel import quitar_conta
+                quitar_conta(nota, nota.data_pagamento or hoje_sp(), comprovante_id=novo_comp.id,
+                             observacao="Comprovante anexado na edição", usuario_id=current_user.id)
 
         db.session.commit()
 
@@ -455,6 +490,7 @@ def exportar_excel():
     status_filtro = request.args.get("status", "")
     cliente = request.args.get("cliente", "").strip()
     cadastrado_por = request.args.get("cadastrado_por", "")
+    prioridade = request.args.get("prioridade", "")
     somente_atrasadas = request.args.get("somente_atrasadas", "")
     busca = request.args.get("busca", "").strip()
     situacao = request.args.get("situacao", "")
@@ -476,6 +512,8 @@ def exportar_excel():
         query = query.filter(aberto, Nota.data_vencimento >= hoje, Nota.data_vencimento <= hoje + timedelta(days=30))
     elif situacao == "pagas":
         query = query.filter(Nota.status.in_(("Pago", "Recebido")))
+    elif situacao == "prioritarias":
+        query = query.filter(aberto, Nota.prioridade >= 3)
 
     if data_inicio:
         d = parse_data(data_inicio)
@@ -503,6 +541,8 @@ def exportar_excel():
         query = query.filter(Nota.status == status_filtro)
     if cadastrado_por and cadastrado_por.isdigit():
         query = query.filter(Nota.enviado_por_id == int(cadastrado_por))
+    if prioridade.isdigit():
+        query = query.filter(Nota.prioridade == int(prioridade))
     if somente_atrasadas == "1":
         query = query.filter(aberto, Nota.data_vencimento < hoje)
     if cliente:

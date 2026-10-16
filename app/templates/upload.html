@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import campo_prioridade %}
 {% block title %}Nova conta{% endblock %}
 {% block content %}
 <header class="ap-cabecalho">
@@ -23,8 +24,18 @@
         </div>
         <div class="col-12 col-md-6">
           <label class="form-label">Comprovante de Pagamento / PIX (Opcional)</label>
-          <input type="file" name="comprovante" class="form-control" accept=".pdf,image/*" capture="environment">
+          <input type="file" name="comprovante" class="form-control" accept=".pdf,image/*">
           <div class="form-text">Comprovante bancário ou recibo de transferência.</div>
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" name="ja_paga" value="1" id="jaPaga">
+            <label class="form-check-label" for="jaPaga" style="color:#fff;">Já está paga: contar como paga ao salvar</label>
+            <div class="form-text">Marca sozinha quando você escolhe um comprovante.</div>
+          </div>
+          <script>
+            document.querySelector('input[name="comprovante"]').addEventListener('change', function () {
+              document.getElementById('jaPaga').checked = this.files.length > 0;
+            });
+          </script>
         </div>
       </div>
 
@@ -73,6 +84,10 @@
         <div class="col-6 col-md-4">
           <label class="form-label">Data de vencimento</label>
           <input type="date" name="data_vencimento" class="form-control" value="{{ hoje }}">
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label">Prioridade</label>
+          {{ campo_prioridade(2) }}
         </div>
         <div class="col-6 col-md-4">
           <label class="form-label">Status</label>

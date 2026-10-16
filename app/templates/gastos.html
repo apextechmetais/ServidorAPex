@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Gastos e Métricas{% endblock %}
+{% block content %}
+{% set saida = tipo == 'saida' %}
+{% set verbo = 'Gasto' if saida else 'Recebido' %}
+{% set cor = '#fb923c' if saida else '#38bdf8' %}
+
+{% macro comparacao(atual, anterior, texto, saida) -%}
+  {%- if anterior and anterior > 0 -%}
+    {%- set pct = ((atual / anterior - 1) * 100)|float -%}
+    <span class="ap-variacao {{ ('sobe' if pct > 0 else 'desce') if saida else ('desce' if pct > 0 else 'sobe') }}">{{ '▲' if pct > 0 else '▼' }} {{ '%.0f'|format(pct|abs) }}%</span> {{ texto }} ({{ anterior|brl }})
+  {%- else -%}{{ texto|capitalize }}: {{ anterior|brl }}{%- endif -%}
+{%- endmacro %}
+
+<header class="ap-cabecalho">
+  <div>
+    <h1><i class="fa-solid fa-chart-pie"></i> Gastos e Métricas</h1>
+    <p>Quanto {{ 'saiu' if saida else 'entrou' }} por dia, semana, mês e ano, por categoria e por {{ 'fornecedor' if saida else 'cliente' }}. Considera as baixas registradas (data do pagamento).</p>
+  </div>
+  <div class="ap-cabecalho__acoes">
+    <div class="ap-chips m-0">
+      <a class="ap-chip {{ 'ativo' if saida }}" href="{{ url_for('gastos.painel', periodo=chave, ano=filtros.get('ano'), de=filtros.get('de'), ate=filtros.get('ate')) }}"><i class="fa-solid fa-arrow-up"></i> Gastos</a>
+      <a class="ap-chip {{ 'ativo' if not saida }}" href="{{ url_for('gastos.painel', fluxo='entrada', periodo=chave, ano=filtros.get('ano'), de=filtros.get('de'), ate=filtros.get('ate')) }}"><i class="fa-solid fa-arrow-down"></i> Recebimentos</a>
+    </div>
+  </div>
+</header>
+
+<div class="ap-kpis">
+  <div class="ap-kpi-card" style="--cor:{{ cor }};">
+    <div class="rotulo"><i class="fa-solid fa-calendar-day"></i> {{ verbo }} hoje</div>
+    <div class="valor">{{ fixos.hoje|brl }}</div>
+    <div class="sub">{{ comparacao(fixos.hoje, fixos.ontem, 'vs. ontem', saida) }}</div>
+  </div>
+  <div class="ap-kpi-card" style="--cor:{{ cor }};">
+    <div class="rotulo"><i class="fa-solid fa-calendar-week"></i> {{ verbo }} na semana</div>
+    <div class="valor">{{ fixos.semana|brl }}</div>
+    <div class="sub">{{ comparacao(fixos.semana, fixos.semana_passada, 'vs. semana passada inteira', saida) }}</div>
+  </div>
+  <div class="ap-kpi-card" style="--cor:{{ cor }};">
+    <div class="rotulo"><i class="fa-solid fa-calendar"></i> {{ verbo }} no mês</div>
+    <div class="valor">{{ fixos.mes|brl }}</div>
+    <div class="sub">{{ comparacao(fixos.mes, fixos.mes_passado, 'vs. mês passado inteiro', saida) }}</div>
+  </div>
+  <div class="ap-kpi-card" style="--cor:{{ cor }};">
+    <div class="rotulo"><i class="fa-solid fa-calendar-check"></i> {{ verbo }} em {{ hoje.year }}</div>
+    <div class="valor">{{ fixos.ano|brl }}</div>
+    <div class="sub">{{ comparacao(fixos.ano, fixos.ano_passado, 'vs. ' ~ (hoje.year - 1) ~ ' inteiro', saida) }}</div>
+  </div>
+</div>
+
+<section class="ap-bloco mb-3">
+  <div class="ap-bloco__topo"><h2><i class="fa-solid fa-filter"></i> Período</h2></div>
+  <div class="ap-chips">
+    {% for k, nome in [('hoje','Hoje'), ('semana','Esta semana'), ('7dias','7 dias'), ('mes','Este mês'), ('30dias','30 dias'), ('3meses','3 meses'), ('6meses','6 meses'), ('12meses','12 meses'), ('ano','Por ano')] %}
+    <a class="ap-chip {{ 'ativo' if chave == k }}" href="{{ url_for('gastos.painel', periodo=k, fluxo=None if saida else 'entrada') }}">{{ nome }}</a>
+    {% endfor %}
+  </div>
+  <form method="get" class="row g-2 align-items-end">
+    {% if not saida %}<input type="hidden" name="fluxo" value="entrada">{% endif %}
+    <div class="col-6 col-md-2">
+      <label class="form-label">Ano</label>
+      <select name="ano" class="form-select" onchange="this.form.periodo.value='ano'; this.form.submit();">
+        {% for a in anos %}<option value="{{ a }}" {{ 'selected' if (filtros.get('ano')|int(0)) == a or (not filtros.get('ano') and a == hoje.year) }}>{{ a }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label">De</label>
+      <input type="date" name="de" class="form-control" value="{{ filtros.get('de', '') }}">
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label">Até</label>
+      <input type="date" name="ate" class="form-control" value="{{ filtros.get('ate', '') }}">
+    </div>
+    <input type="hidden" name="periodo" value="personalizado">
+    <div class="col-6 col-md-4"><button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-magnifying-glass me-1"></i> Ver período personalizado</button></div>
+  </form>
+</section>
+
+<div class="ap-kpis">
+  <div class="ap-kpi-card" style="--cor:#25D07F;">
+    <div class="rotulo"><i class="fa-solid fa-sack-dollar"></i> Total — {{ rotulo }}</div>
+    <div class="valor">{{ total|brl }}</div>
+    <div class="sub">{{ qtd }} pagamento(s) em {{ dias }} dia(s) · {{ comparacao(total, total_anterior, 'vs. ' ~ anterior_ini.strftime('%d/%m') ~ '–' ~ anterior_fim.strftime('%d/%m/%Y'), saida) }}</div>
+  </div>
+  <div class="ap-kpi-card" style="--cor:#94a3b8;">
+    <div class="rotulo"><i class="fa-solid fa-calculator"></i> Média por dia</div>
+    <div class="valor">{{ media_dia|brl }}</div>
+    <div class="sub">No período escolhido</div>
+  </div>
+  <div class="ap-kpi-card" style="--cor:#94a3b8;">
+    <div class="rotulo"><i class="fa-solid fa-calculator"></i> Média por semana</div>
+    <div class="valor">{{ media_semana|brl }}</div>
+    <div class="sub">Ritmo do período em 7 dias</div>
+  </div>
+  <div class="ap-kpi-card" style="--cor:#94a3b8;">
+    <div class="rotulo"><i class="fa-solid fa-calculator"></i> Média por mês</div>
+    <div class="valor">{{ media_mes|brl }}</div>
+    <div class="sub">Ritmo do período em 30 dias</div>
+  </div>
+</div>
+
+<section class="ap-bloco mb-3">
+  <div class="ap-bloco__topo"><h2><i class="fa-solid fa-chart-column"></i> {{ verbo }} por {{ escala }} — {{ rotulo }}</h2></div>
+  <div style="height:280px; position:relative;"><canvas id="graficoSerie" role="img" aria-label="{{ verbo }} por {{ escala }} no período"></canvas></div>
+</section>
+
+<div class="ap-grade-2">
+  <section class="ap-bloco">
+    <div class="ap-bloco__topo"><h2><i class="fa-solid fa-tags"></i> Por categoria</h2></div>
+    {% if categorias %}
+    <ul class="ap-lista">
+      {% for nome, valor in categorias %}
+      {% set pct = (valor / total * 100)|float if total > 0 else 0 %}
+      <li style="flex-wrap:wrap;">
+        <span class="titulo" style="min-width:160px;">{{ nome }}</span>
+        <div class="ap-barra-h" style="flex:1; min-width:120px;"><div class="trilho"><span style="width:{{ pct }}%; background:{{ cor }};"></span></div><span class="meta">{{ '%.0f'|format(pct) }}%</span></div>
+        <div class="valor">{{ valor|brl }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="ap-vazio"><i class="fa-solid fa-circle-info"></i>Nenhum pagamento no período.</p>{% endif %}
+  </section>
+
+  <section class="ap-bloco">
+    <div class="ap-bloco__topo"><h2><i class="fa-solid fa-building"></i> Por {{ 'fornecedor' if saida else 'cliente' }} (10 maiores)</h2></div>
+    {% if fornecedores %}
+    <ul class="ap-lista">
+      {% for nome, valor in fornecedores %}
+      {% set pct = (valor / total * 100)|float if total > 0 else 0 %}
+      <li style="flex-wrap:wrap;">
+        <span class="titulo" style="min-width:160px;">{{ nome }}</span>
+        <div class="ap-barra-h" style="flex:1; min-width:120px;"><div class="trilho"><span style="width:{{ pct }}%; background:{{ cor }};"></span></div><span class="meta">{{ '%.0f'|format(pct) }}%</span></div>
+        <div class="valor">{{ valor|brl }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="ap-vazio"><i class="fa-solid fa-circle-info"></i>Nenhum pagamento no período.</p>{% endif %}
+  </section>
+</div>
+
+<section class="ap-bloco">
+  <div class="ap-bloco__topo"><h2><i class="fa-solid fa-ranking-star"></i> Maiores pagamentos do período</h2></div>
+  {% if maiores %}
+  <ul class="ap-lista">
+    {% for data, valor, n in maiores %}
+    <li>
+      <span class="ap-prazo neutro">{{ data.strftime('%d/%m/%Y') }}</span>
+      <div style="min-width:0;"><a class="titulo" href="{{ url_for('painel.detalhe', nota_id=n.id) }}">{{ n.cliente_fornecedor or n.categoria or 'Conta' }}</a><div class="meta">{{ n.categoria or '—' }}</div></div>
+      <div class="valor">{{ valor|brl }}</div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="ap-vazio"><i class="fa-solid fa-circle-info"></i>Nenhum pagamento no período.</p>{% endif %}
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    Chart.defaults.font.family = "'Archivo', 'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.color = 'rgba(245, 246, 243, 0.72)';
+    const brl = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    new Chart(document.getElementById('graficoSerie'), {
+      type: 'bar',
+      data: { labels: {{ serie_rotulos|tojson }}, datasets: [{ label: '{{ verbo }}', data: {{ serie_valores|tojson }}, backgroundColor: '{{ cor }}', borderRadius: 4, maxBarThickness: 40 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0C2A1D', borderColor: 'rgba(245, 246, 243, 0.18)', borderWidth: 1, padding: 12, cornerRadius: 8, callbacks: { label: (c) => ' ' + brl(c.parsed.y) } } },
+        scales: { y: { beginAtZero: true, grid: { color: 'rgba(245, 246, 243, 0.07)' }, ticks: { callback: (v) => 'R$ ' + Number(v).toLocaleString('pt-BR') } }, x: { grid: { display: false } } }
+      }
+    });
+  });
+</script>
+{% endblock %}

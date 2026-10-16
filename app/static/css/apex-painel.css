@@ -299,3 +299,15 @@ a.ap-kpi-card:hover { translate: 0 -2px; border-color: var(--ap-linha-forte); bo
 .ap-arquivo .nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (min-width: 1100px) { .ap-kpis--3 { grid-template-columns: repeat(3, 1fr); } }
+
+/* Prioridade da conta */
+.ap-prio { display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 700; border-radius: 999px; padding: 2px 8px; border: 1px solid; white-space: nowrap; }
+.ap-prio--4 { color: #ff6b6b; border-color: rgba(255, 107, 107, 0.5); background: rgba(255, 107, 107, 0.12); }
+.ap-prio--3 { color: #fb923c; border-color: rgba(251, 146, 60, 0.5); background: rgba(251, 146, 60, 0.1); }
+.ap-prio--2, .ap-prio--1 { color: var(--ap-texto-2); border-color: var(--ap-linha-forte); }
+.ap-variacao { font-size: 0.85rem; font-weight: 700; }
+.ap-variacao.sobe { color: var(--ap-vermelho); }
+.ap-variacao.desce { color: var(--ap-verde); }
+.ap-barra-h { display: flex; align-items: center; gap: 10px; }
+.ap-barra-h .trilho { flex: 1; height: 8px; border-radius: 999px; background: var(--ap-superficie-2); overflow: hidden; }
+.ap-barra-h .trilho span { display: block; height: 100%; border-radius: 999px; background: #fb923c; }

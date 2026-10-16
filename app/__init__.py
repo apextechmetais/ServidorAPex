@@ -37,6 +37,7 @@ def create_app():
     from .documentos import documentos_bp
     from .alertas import alertas_bp, iniciar_agendador
     from .arquivos import arquivos_bp
+    from .gastos import gastos_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(notas_bp)
@@ -44,6 +45,7 @@ def create_app():
     app.register_blueprint(documentos_bp)
     app.register_blueprint(alertas_bp)
     app.register_blueprint(arquivos_bp)
+    app.register_blueprint(gastos_bp)
     app.register_blueprint(setup_bp)
 
     with app.app_context():
@@ -197,6 +199,8 @@ def _migrar_colunas(db):
         ("arquivo_id", "ALTER TABLE nota ADD COLUMN arquivo_id INTEGER"),
         ("comprovante_id", "ALTER TABLE nota ADD COLUMN comprovante_id INTEGER"),
         ("grupo_recorrencia", "ALTER TABLE nota ADD COLUMN grupo_recorrencia VARCHAR(32)"),
+        ("prioridade", "ALTER TABLE nota ADD COLUMN prioridade INTEGER NOT NULL DEFAULT 2"),
+        ("quitada", "ALTER TABLE nota ADD COLUMN quitada BOOLEAN NOT NULL DEFAULT FALSE"),
     ]
 
     for col_nome, sql_cmd in novas_colunas_nota:

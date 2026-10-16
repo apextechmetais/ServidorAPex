@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% from "_macros.html" import prazo, status, icone_arquivo %}
+{% from "_macros.html" import prazo, status, icone_arquivo, prioridade %}
 {% block title %}{{ nota.cliente_fornecedor or 'Conta' }}{% endblock %}
 {% block content %}
 {% set pago = nota.valor_pago or 0 %}
 {% set pct = ((pago / nota.valor * 100) if nota.valor and nota.valor > 0 else 0)|float %}
 <header class="ap-cabecalho">
   <div>
-    <h1><i class="fa-solid fa-file-invoice-dollar"></i> {{ nota.cliente_fornecedor or nota.categoria or 'Conta' }}</h1>
+    <h1><i class="fa-solid fa-file-invoice-dollar"></i> {{ nota.cliente_fornecedor or nota.categoria or 'Conta' }} {{ prioridade(nota) }}</h1>
     <p>{{ 'Conta a receber' if nota.tipo == 'entrada' else 'Conta a pagar' }} · {{ nota.categoria or 'Sem categoria' }}{% if nota.numero_nota %} · Nº {{ nota.numero_nota }}{% endif %}</p>
   </div>
   <div class="ap-cabecalho__acoes">
@@ -49,6 +49,7 @@
       <dt>Fluxo</dt><dd>{{ 'Entrada (a receber)' if nota.tipo == 'entrada' else 'Saída (a pagar)' }}</dd>
       <dt>{{ 'Cliente' if nota.tipo == 'entrada' else 'Fornecedor' }}</dt><dd>{{ nota.cliente_fornecedor or '—' }}</dd>
       <dt>Categoria</dt><dd>{{ nota.categoria or '—' }}</dd>
+      <dt>Prioridade</dt><dd>{{ prioridade(nota, true) }}</dd>
       <dt>Tipo de documento</dt><dd>{{ nota.tipo_documento or '—' }}</dd>
       <dt>Número</dt><dd>{{ nota.numero_nota or '—' }}</dd>
       <dt>Emissão</dt><dd>{{ nota.data_emissao.strftime('%d/%m/%Y') }}</dd>
@@ -119,7 +120,7 @@
   </section>
 
   {% if nota.pode_editar(current_user) and nota.em_aberto %}
-  <section class="ap-bloco">
+  <section class="ap-bloco" id="dar-baixa">
     <div class="ap-bloco__topo"><h2><i class="fa-solid fa-circle-dollar-to-slot"></i> Dar baixa</h2></div>
     <form method="post" action="{{ url_for('painel.registrar_pagamento', nota_id=nota.id) }}" enctype="multipart/form-data" class="row g-3">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -146,8 +147,14 @@
         <input type="text" name="observacao" class="form-control" placeholder="Ex.: pago pela conta do Itaú">
       </div>
       <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="quitar" value="1" id="quitar" checked>
+          <label class="form-check-label" for="quitar" style="color:#fff;">Quitar a conta: marcar como {{ 'recebida' if nota.tipo == 'entrada' else 'paga' }}</label>
+          <div class="form-text">Desmarque só se for um pagamento parcial e ainda faltar valor. Com a opção marcada, a conta fica paga mesmo com desconto ou acordo.</div>
+        </div>
+      </div>
+      <div class="col-12">
         <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check me-1"></i> Registrar baixa</button>
-        <span class="ms-2" style="color:var(--ap-texto-2); font-size:0.85rem;">Valor menor que o saldo fica como pagamento parcial.</span>
       </div>
     </form>
   </section>

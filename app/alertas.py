@@ -121,9 +121,12 @@ def montar_resumo():
     tipos = ("saida", "entrada") if config_get("alertas_incluir_receber") == "1" else ("saida",)
 
     abertas = Nota.query.filter(Nota.status.in_(("Pendente", "Parcial")), Nota.tipo.in_(tipos), Nota.data_vencimento.isnot(None)).order_by(Nota.data_vencimento).all()
-    atrasadas = [n for n in abertas if n.data_vencimento < hoje]
-    hoje_lista = [n for n in abertas if n.data_vencimento == hoje]
-    proximas = [n for n in abertas if hoje < n.data_vencimento <= hoje + timedelta(days=dias_antes)]
+    # Mais importantes primeiro dentro de cada grupo
+    def ordem(lista):
+        return sorted(lista, key=lambda n: (-(n.prioridade or 2), n.data_vencimento))
+    atrasadas = ordem([n for n in abertas if n.data_vencimento < hoje])
+    hoje_lista = ordem([n for n in abertas if n.data_vencimento == hoje])
+    proximas = ordem([n for n in abertas if hoje < n.data_vencimento <= hoje + timedelta(days=dias_antes)])
     documentos = DocumentoEmpresa.query.filter(
         DocumentoEmpresa.data_validade.isnot(None),
         DocumentoEmpresa.data_validade <= hoje + timedelta(days=dias_validade),
@@ -152,6 +155,11 @@ def html_resumo(r):
             url = link(n)
             nome_html = f'<a href="{url}" style="color:#F5F6F3;">{nome}</a>' if url else nome
             fluxo = "A receber" if n.tipo == "entrada" else "A pagar"
+            prio = n.prioridade or 2
+            if prio >= 3:
+                cor_tag = "#ff6b6b" if prio == 4 else "#fb923c"
+                nome_html += (f' <span style="display:inline-block;font-size:11px;font-weight:bold;color:{cor_tag};'
+                              f'border:1px solid {cor_tag};border-radius:10px;padding:1px 7px;">{n.prioridade_nome.upper()}</span>')
             html += (
                 f'<tr><td style="padding:8px 6px;border-bottom:1px solid #1d3b2c;border-left:3px solid {cor};">'
                 f'<strong>{nome_html}</strong><br><span style="color:#9fb1a7;font-size:12px;">{fluxo} · {n.categoria or "—"} · vence {n.data_vencimento.strftime("%d/%m/%Y")} ({quando})</span></td>'

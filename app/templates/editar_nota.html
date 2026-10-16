@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import campo_prioridade %}
 {% block title %}Editar nota{% endblock %}
 {% block content %}
 <header class="ap-cabecalho">
@@ -42,7 +43,17 @@
             {% endif %}
           </div>
           <label class="form-label small">Anexar / Substituir Comprovante (Opcional)</label>
-          <input type="file" name="comprovante" class="form-control" accept=".pdf,image/*" capture="environment">
+          <input type="file" name="comprovante" class="form-control" accept=".pdf,image/*">
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" name="ja_paga" value="1" id="jaPaga">
+            <label class="form-check-label" for="jaPaga" style="color:#fff;">Marcar a conta como paga ao salvar</label>
+            <div class="form-text">Marca sozinha quando você escolhe um comprovante.</div>
+          </div>
+          <script>
+            document.querySelector('input[name="comprovante"]').addEventListener('change', function () {
+              document.getElementById('jaPaga').checked = this.files.length > 0;
+            });
+          </script>
         </div>
       </div>
 
@@ -86,6 +97,10 @@
         <div class="col-6 col-md-3">
           <label class="form-label">Data de pagamento/rec.</label>
           <input type="date" name="data_pagamento" class="form-control" value="{{ nota.data_pagamento.isoformat() if nota.data_pagamento else '' }}">
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label">Prioridade</label>
+          {{ campo_prioridade(nota.prioridade) }}
         </div>
         <div class="col-6 col-md-3">
           <label class="form-label">Status</label>

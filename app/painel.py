@@ -35,7 +35,11 @@ def recalcular_situacao(nota):
     """Valor pago, status e data de pagamento a partir das baixas registradas."""
     total = sum((p.valor for p in nota.pagamentos), ZERO)
     nota.valor_pago = total
-    if total <= 0:
+    if nota.quitada and nota.pagamentos:
+        # Quitada na baixa (desconto, acordo): fica paga mesmo com valor menor
+        nota.status = "Recebido" if nota.tipo == "entrada" else "Pago"
+        nota.data_pagamento = max(p.data for p in nota.pagamentos)
+    elif total <= 0:
         if nota.status in ("Pago", "Recebido", "Parcial"):
             nota.status = "Pendente"
         nota.data_pagamento = None
@@ -45,6 +49,22 @@ def recalcular_situacao(nota):
     else:
         nota.status = "Parcial"
         nota.data_pagamento = max(p.data for p in nota.pagamentos)
+
+
+def quitar_conta(nota, data, forma=None, comprovante_id=None, observacao=None, usuario_id=None):
+    """Registra o pagamento do saldo e marca a conta como paga (usado ao anexar comprovante)."""
+    if not nota.pagamentos and (nota.valor_pago or ZERO) > 0 and nota.status != "Pendente":
+        # valor pago registrado antes das baixas detalhadas
+        db.session.add(Pagamento(nota=nota, valor=nota.valor_pago, data=nota.data_pagamento or nota.data_emissao,
+                                 observacao="Valor já registrado antes das baixas", registrado_por_id=usuario_id))
+    jaPago = sum((p.valor for p in nota.pagamentos), ZERO)
+    saldo = (nota.valor or ZERO) - jaPago
+    if saldo > 0:
+        db.session.add(Pagamento(nota=nota, valor=saldo, data=data, forma=forma, observacao=observacao,
+                                 comprovante_id=comprovante_id, registrado_por_id=usuario_id))
+    nota.quitada = True
+    db.session.flush()
+    recalcular_situacao(nota)
 
 
 @painel_bp.route("/")
@@ -103,6 +123,10 @@ def visao_geral():
             float(soma_saldo([n for n in receber if no_mes(n)])),
         )
 
+    # O que precisa de atenção primeiro: prioridade + atraso + vencimento próximo (só contas a pagar)
+    atencao = sorted([n for n in pagar if n.atencao >= 60 or (n.prioridade or 2) >= 3],
+                     key=lambda n: (-n.atencao, n.data_vencimento or hoje))
+
     documentos = DocumentoEmpresa.query.filter(
         DocumentoEmpresa.data_validade.isnot(None),
         DocumentoEmpresa.data_validade <= hoje + timedelta(days=30),
@@ -111,6 +135,7 @@ def visao_geral():
     return render_template(
         "visao_geral.html", hoje=hoje, kpis=kpis, proximos=proximos[:12], qtd_proximos=len(proximos),
         atrasadas=atrasadas[:12], qtd_atrasadas=len(atrasadas), documentos=documentos,
+        atencao=atencao[:8], qtd_atencao=len(atencao),
         historico_labels=list(historico.keys()), historico_pago=[v[0] for v in historico.values()],
         historico_recebido=[v[1] for v in historico.values()],
         agenda_labels=list(agenda.keys()), agenda_pagar=[v[0] for v in agenda.values()],
@@ -161,6 +186,9 @@ def registrar_pagamento(nota_id):
     )
     db.session.add(pag)
     db.session.flush()
+    # "Quitar a conta": com comprovante anexado e a opção marcada, a conta conta como paga
+    if request.form.get("quitar") == "1":
+        nota.quitada = True
     recalcular_situacao(nota)
     if comprovante and not nota.comprovante_id:
         nota.comprovante_id = comprovante.id
@@ -185,6 +213,7 @@ def excluir_pagamento(nota_id, pag_id):
     descricao = f"Doc #{nota.id}: {pag.valor} de {pag.data.strftime('%d/%m/%Y')}"
     nota.pagamentos.remove(pag)
     db.session.delete(pag)
+    nota.quitada = False  # remover uma baixa reabre a conta
     db.session.flush()
     if comp_id and comp_id != nota.comprovante_id:
         excluir_arquivo(comp_id)

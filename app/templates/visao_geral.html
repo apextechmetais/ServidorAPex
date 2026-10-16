@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import prazo, validade %}
+{% from "_macros.html" import prazo, validade, prioridade %}
 {% block title %}Visão Geral{% endblock %}
 {% block content %}
 <header class="ap-cabecalho">
@@ -51,6 +51,30 @@
     <div class="sub">Saldo do mês: {{ (kpis.recebido_mes - kpis.pago_mes)|brl }}</div>
   </div>
 </div>
+
+<section class="ap-bloco mb-3" style="border-color: rgba(255, 107, 107, 0.35);">
+  <div class="ap-bloco__topo">
+    <h2><i class="fa-solid fa-fire" style="color:#ff6b6b;"></i> Precisam de atenção</h2>
+    <a href="{{ url_for('notas.dashboard', situacao='a_pagar', ordem='atencao') }}">Ver em ordem de importância ({{ qtd_atencao }})</a>
+  </div>
+  {% if atencao %}
+  <ul class="ap-lista">
+    {% for n in atencao %}
+    <li>
+      {{ prazo(n.dias_para_vencer) }}
+      <div style="min-width:0;">
+        <a class="titulo" href="{{ url_for('painel.detalhe', nota_id=n.id) }}">{{ n.cliente_fornecedor or n.categoria or 'Sem fornecedor' }}</a> {{ prioridade(n) }}
+        <div class="meta">{{ n.categoria or '—' }} · {{ n.motivo_atencao }}</div>
+      </div>
+      <div class="valor">{{ n.saldo_restante|brl }}</div>
+      <a href="{{ url_for('painel.detalhe', nota_id=n.id) }}#dar-baixa" class="btn btn-sm btn-primary" title="Dar baixa e anexar comprovante"><i class="fa-solid fa-check me-1"></i>Pagar</a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="ap-vazio"><i class="fa-solid fa-circle-check"></i>Nada urgente: nenhuma conta crítica, atrasada ou vencendo nos próximos dias.</p>
+  {% endif %}
+</section>
 
 <div class="ap-grade-2">
   <section class="ap-bloco">
