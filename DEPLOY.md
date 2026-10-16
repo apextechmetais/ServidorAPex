@@ -50,6 +50,8 @@ interface do GitHub, use `git pull --rebase origin main` antes do push.)
 | `SECRET_KEY` | gere com `python3 -c "import secrets; print(secrets.token_hex(32))"` |
 | `DATABASE_URL` | já vem do Postgres (passo 3) |
 | `UPLOAD_FOLDER` | `/data/uploads` |
+| `ADMIN_PASSWORD` | senha do administrador (cria/atualiza o usuário `admin` ao iniciar) |
+| `ADMIN_USERNAME` | opcional, padrão `admin` |
 
 ## 6. Deploy e domínio
 
@@ -59,7 +61,12 @@ interface do GitHub, use `git pull --rebase origin main` antes do push.)
 
 ## 7. Inicializar banco e criar o admin
 
-**Sem Shell (recomendado):** no Railway, crie a variável `SETUP_TOKEN` com um código
+**Pelas variáveis de ambiente (recomendado):** no Railway, crie `ADMIN_PASSWORD` com a senha
+desejada (e, se quiser, `ADMIN_USERNAME`, padrão `admin`, e `ADMIN_NOME`). A cada início o
+servidor cria esse administrador ou atualiza a senha dele para a da variável. Para trocar a
+senha, mude a variável: o Railway reinicia o serviço sozinho.
+
+**Pela rota de setup:** no Railway, crie a variável `SETUP_TOKEN` com um código
 qualquer, difícil de adivinhar. Acesse `https://SEU-APP/setup/<SETUP_TOKEN>`: o sistema cria
 o usuário `admin` com uma senha aleatória e mostra a senha uma única vez. Entre, troque a senha
 se quiser e **apague a variável `SETUP_TOKEN`** (a rota deixa de existir). Se já houver um

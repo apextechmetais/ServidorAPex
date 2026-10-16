@@ -41,6 +41,7 @@ def create_app():
         db.create_all()
         _migrar_colunas(db)
         _inicializar_categorias(app, db)
+        _garantir_admin_do_ambiente(db)
 
     register_cli(app)
 
@@ -83,6 +84,38 @@ def create_app():
 
     return app
 
+
+
+def _garantir_admin_do_ambiente(db):
+    """Acesso de administrador definido nas variáveis de ambiente (Railway).
+
+    ADMIN_PASSWORD (obrigatória para ativar), ADMIN_USERNAME (padrão "admin") e ADMIN_NOME.
+    A cada início o usuário é criado, ou tem a senha atualizada para a do ambiente,
+    e fica ativo e administrador. Sem ADMIN_PASSWORD nada é feito.
+    """
+    import logging
+    from .models import User
+
+    senha = os.environ.get("ADMIN_PASSWORD", "")
+    if not senha:
+        return
+    username = os.environ.get("ADMIN_USERNAME", "admin").strip() or "admin"
+    nome = os.environ.get("ADMIN_NOME", "Administrador").strip() or "Administrador"
+    try:
+        user = User.query.filter_by(username=username).first()
+        if user is None:
+            user = User(username=username, nome=nome, is_admin=True, ativo=True)
+            db.session.add(user)
+        elif user.check_password(senha) and user.is_admin and user.ativo:
+            return  # já está como no ambiente
+        user.is_admin = True
+        user.ativo = True
+        user.set_password(senha)
+        db.session.commit()
+        logging.getLogger(__name__).info("Administrador '%s' configurado a partir das variáveis de ambiente.", username)
+    except Exception:
+        # Com mais de um processo (gunicorn) iniciando juntos, outro pode ter criado o usuário primeiro
+        db.session.rollback()
 
 
 def _inicializar_categorias(app, db):
